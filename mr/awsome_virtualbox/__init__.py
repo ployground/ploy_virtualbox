@@ -1,10 +1,13 @@
 from lazy import lazy
 from mr.awsome.common import BaseMaster
 from mr.awsome.config import BooleanMassager, PathMassager
+from mr.awsome.config import expand_path
 from mr.awsome.plain import Instance as PlainInstance
 import logging
 import os
+import re
 import subprocess
+import shlex
 import sys
 import time
 
@@ -20,7 +23,7 @@ class Instance(PlainInstance):
     sectiongroupname = 'vb-instance'
 
     @lazy
-    def _vmfolder(self):
+    def _vmbasefolder(self):
         folder = self.config.get('basefolder')
         if folder is None:
             folder = self.master.master_config.get('basefolder')
@@ -28,16 +31,36 @@ class Instance(PlainInstance):
             folder = self.vb.list.systemproperties().get('Default machine folder')
         if folder is None:
             raise VirtualBoxError("No basefolder configured for VM '%s'." % self.id)
-        return os.path.join(folder, self.id)
+        return folder
+
+    @lazy
+    def _vmfolder(self):
+        return os.path.join(self._vmbasefolder, self.id)
 
     @lazy
     def vb(self):
         import vbox
         return vbox.pyVb.VirtualBox().cli.manage
 
-    def _vminfo(self):
+    def _vminfo(self, group=None):
         info = self.vb.showvminfo(self.id)
-        return dict(self.vb.cli.util.parseMachineReadableFmt(info))
+        info = dict(self.vb.cli.util.parseMachineReadableFmt(info))
+        if group is None:
+            return info
+        result = {}
+        matcher = re.compile('%s(\D+)(\d+)' % group)
+        for key, value in info.items():
+            m = matcher.match(key)
+            if m:
+                name, index = m.groups()
+                d = result.setdefault(index, {})
+                d[name] = value
+                if name == 'name':
+                    result[value] = d
+        for key in list(result):
+            if key != result[key]['name']:
+                del result[key]
+        return result
 
     @property
     def _vmacpi(self):
@@ -143,7 +166,7 @@ class Instance(PlainInstance):
             log.info("Creating instance '%s'", self.id)
             try:
                 self.vb.createvm(
-                    name=self.id, basefolder=self._vmfolder, register=True)
+                    name=self.id, basefolder=self._vmbasefolder, register=True)
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
@@ -152,6 +175,78 @@ class Instance(PlainInstance):
             log.info("Instance state: %s", status)
             log.info("Instance already started")
             return True
+        # modify vm
+        args = []
+        for key, value in config.items():
+            if not key.startswith('vm-'):
+                continue
+            args.extend(("--%s" % key[3:], value))
+        if args:
+            try:
+                self.vb.modifyvm(self.id, *args)
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to modify VM '%s':\n%s" % (self.id, e))
+                sys.exit(1)
+        # storagectl
+        storagectls = self._vminfo(group='storagecontroller')
+        for key, value in config.items():
+            if not key.startswith('storagectl-'):
+                continue
+            name = key[11:]
+            args = shlex.split(value)
+            args_dict = {}
+            for k, v in zip(*[iter(args)] * 2):
+                args_dict[k[2:]] = v
+            if name in storagectls:
+                continue
+            try:
+                self.vb.storagectl(self.id, name, **args_dict)
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to create storage controller '%s' for VM '%s':\n%s" % (name, self.id, e))
+                sys.exit(1)
+        storagectls = self._vminfo(group='storagecontroller')
+        # storageattach
+        storages = filter(None, config.get('storage', '').split('\n'))
+        if storages and not storagectls:
+            log.info("Adding default 'sata' controller.")
+            try:
+                self.vb.storagectl(self.id, 'sata', add='sata')
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to create default storage controller for VM '%s':\n%s" % (self.id, e))
+                sys.exit(1)
+            storagectls = self._vminfo(group='storagecontroller')
+        storage_path_massager = PathMassager(config.sectiongroupname, 'storage')
+        storage_path = storage_path_massager.path(config, self.id)
+        for index, storage in enumerate(storages):
+            args = shlex.split(storage)
+            args_dict = {}
+            for k, v in zip(*[iter(args)] * 2):
+                args_dict[k[2:]] = v
+            if 'medium' in args_dict:
+                medium = args_dict['medium']
+                if '.' in medium:
+                    medium = expand_path(medium, storage_path)
+                elif medium.startswith('vb-disk:'):
+                    medium = self.master.disks[medium[8:]].filename(self)
+                args_dict['medium'] = medium
+            if 'storagectl' not in args_dict:
+                if len(storagectls) == 1:
+                    storagectl = storagectls.keys()[0]
+                else:
+                    log.error("You have to select the controller for storage '%s' on VM '%s'." % (index, self.id))
+                    sys.exit(1)
+            else:
+                storagectl = args_dict['storagectl']
+                del args_dict['storagectl']
+            if 'type' not in args_dict:
+                args_dict['type'] = 'hdd'
+            if 'port' not in args_dict:
+                args_dict['port'] = str(index)
+            try:
+                self.vb.storageattach(self.id, storagectl, **args_dict)
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to attach storage #%s to VM '%s':\n%s" % (index + 1, self.id, e))
+                sys.exit(1)
         try:
             kw = {}
             if config.get('headless', self._vmheadless):
@@ -159,7 +254,58 @@ class Instance(PlainInstance):
             self.vb.startvm(self.id, **kw)
         except subprocess.CalledProcessError as e:
             log.error("Failed to start VM '%s':\n%s" % (self.id, e))
-            return
+            sys.exit(1)
+
+
+class Disk(object):
+    def __init__(self, name, config):
+        self.name = name
+        self.config = config
+
+    def filename(self, instance):
+        filename = self.config.get('filename')
+        if filename is None:
+            filename = "%s.%s" % (self.name, self.format.lower())
+        filename = expand_path(filename, instance._vmfolder)
+        if not os.path.exists(filename):
+            kw = {}
+            if self.size:
+                kw['size'] = self.size
+            if self.variant:
+                kw['variant'] = self.variant
+            try:
+                instance.vb.createhd(filename=filename, format=self.format, **kw)
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to create disk '%s' at '%s':\n%s" % (self.name, filename, e))
+                sys.exit(1)
+        return filename
+
+    @property
+    def format(self):
+        return self.config.get('format', 'VDI')
+
+    @property
+    def size(self):
+        if 'size' not in self.config:
+            log.error("You have to provide a size for vb-disk '%s'." % self.name)
+            sys.exit(1)
+        return self.config['size']
+
+    @property
+    def variant(self):
+        return self.config.get('variant')
+
+
+class Disks(object):
+    def __init__(self, master):
+        self.master = master
+        self.config = self.master.main_config.get('vb-disk', {})
+        self._cache = {}
+
+    def __getitem__(self, key):
+        if key not in self._cache:
+            self._cache[key] = Disk(key, self.config[key])
+        return self._cache[key]
 
 
 class Master(BaseMaster):
@@ -167,6 +313,10 @@ class Master(BaseMaster):
     section_info = {
         None: Instance,
         'vb-instance': Instance}
+
+    @lazy
+    def disks(self):
+        return Disks(self)
 
 
 def get_instance_massagers(sectiongroupname='instance'):
