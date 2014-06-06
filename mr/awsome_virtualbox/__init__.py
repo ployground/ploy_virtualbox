@@ -335,8 +335,7 @@ def get_massagers():
     massagers.extend([
         BooleanMassager(sectiongroupname, 'headless'),
         BooleanMassager(sectiongroupname, 'use-acpi-powerbutton'),
-        PathMassager(sectiongroupname, 'basefolder'),
-        PathMassager(sectiongroupname, 'vboxapi')])
+        PathMassager(sectiongroupname, 'basefolder')])
 
     sectiongroupname = 'vb-instance'
     massagers.extend(get_instance_massagers(sectiongroupname))
