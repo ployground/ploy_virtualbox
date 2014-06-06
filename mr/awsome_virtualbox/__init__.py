@@ -166,7 +166,8 @@ class Instance(PlainInstance):
             log.info("Creating instance '%s'", self.id)
             try:
                 self.vb.createvm(
-                    name=self.id, basefolder=self._vmbasefolder, register=True)
+                    name=self.id, basefolder=self._vmbasefolder,
+                    ostype=config.get('vm-ostype'), register=True)
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
