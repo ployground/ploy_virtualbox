@@ -63,6 +63,22 @@ class Instance(PlainInstance):
                     del result[key]
         return result
 
+    def _vmguestproperties(self):
+        rc, cmd, out = self.vb.cli.manage._cliAccessor.call(
+            ['guestproperty', 'enumerate', self.id])
+        if rc != 0:
+            raise subprocess.CalledProcessError(rc, cmd, out)
+        result = {}
+        matcher = re.compile('Name: (.*), value: (.*), timestamp: (.*), flags: (.*)')
+        for line in out.splitlines():
+            m = matcher.match(line)
+            if not m:
+                continue
+            name, value, timestamp, flags = m.groups()
+            flags = [x.strip() for x in flags.split(',')]
+            result[name] = dict(value=value, timestamp=timestamp, flags=flags)
+        return result
+
     @property
     def _vmacpi(self):
         acpi = self.config.get('use-acpi-powerbutton')
@@ -126,6 +142,15 @@ class Instance(PlainInstance):
         if status != 'running':
             log.info("Instance state: %s", status)
             return
+        gp = self._vmguestproperties()
+        for ifnum, ifinfo in self._vminfo(group='nic').items():
+            ifindex = int(ifnum) - 1
+            if ifinfo[''] in ('none', 'nat'):
+                continue
+            ip = gp.get('/VirtualBox/GuestInfo/Net/%s/V4/IP' % ifindex, {}).get('value')
+            if not ip:
+                continue
+            log.info("IP for %s interface: %s" % (ifinfo[''], ip))
         log.info("Instance running.")
 
     def stop(self):
