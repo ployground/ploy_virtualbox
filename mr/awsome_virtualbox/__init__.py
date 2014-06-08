@@ -183,7 +183,9 @@ class Instance(PlainInstance):
     def start(self, overrides=None):
         config = self.get_config(overrides)
         status = self._status()
+        create = False
         if status == 'unavailable':
+            create = True
             log.info("Creating instance '%s'", self.id)
             try:
                 self.vb.createvm(
@@ -202,7 +204,10 @@ class Instance(PlainInstance):
         for key, value in config.items():
             if not key.startswith('vm-'):
                 continue
-            args.extend(("--%s" % key[3:], value))
+            key = key[3:]
+            if not create and key.startswith(('natpf',)):
+                continue
+            args.extend(("--%s" % key, value))
         if args:
             try:
                 self.vb.modifyvm(self.id, *args)
