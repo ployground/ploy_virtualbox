@@ -42,13 +42,13 @@ class Instance(PlainInstance):
         import vbox
         return vbox.pyVb.VirtualBox().cli.manage
 
-    def _vminfo(self, group=None):
+    def _vminfo(self, group=None, namekey=None):
         info = self.vb.showvminfo(self.id)
         info = dict(self.vb.cli.util.parseMachineReadableFmt(info))
         if group is None:
             return info
         result = {}
-        matcher = re.compile('%s(\D+)(\d+)' % group)
+        matcher = re.compile('%s(\D*)(\d+)' % group)
         for key, value in info.items():
             m = matcher.match(key)
             if m:
@@ -57,9 +57,10 @@ class Instance(PlainInstance):
                 d[name] = value
                 if name == 'name':
                     result[value] = d
-        for key in list(result):
-            if key != result[key]['name']:
-                del result[key]
+        if namekey:
+            for key in list(result):
+                if key != result[key][namekey]:
+                    del result[key]
         return result
 
     @property
@@ -189,7 +190,7 @@ class Instance(PlainInstance):
                 log.error("Failed to modify VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
         # storagectl
-        storagectls = self._vminfo(group='storagecontroller')
+        storagectls = self._vminfo(group='storagecontroller', namekey='name')
         for key, value in config.items():
             if not key.startswith('storagectl-'):
                 continue
@@ -205,7 +206,7 @@ class Instance(PlainInstance):
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create storage controller '%s' for VM '%s':\n%s" % (name, self.id, e))
                 sys.exit(1)
-        storagectls = self._vminfo(group='storagecontroller')
+        storagectls = self._vminfo(group='storagecontroller', namekey='name')
         # storageattach
         storages = filter(None, config.get('storage', '').split('\n'))
         if storages and not storagectls:
@@ -215,7 +216,7 @@ class Instance(PlainInstance):
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create default storage controller for VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
-            storagectls = self._vminfo(group='storagecontroller')
+            storagectls = self._vminfo(group='storagecontroller', namekey='name')
         storage_path_massager = PathMassager(config.sectiongroupname, 'storage')
         storage_path = storage_path_massager.path(config, self.id)
         for index, storage in enumerate(storages):
