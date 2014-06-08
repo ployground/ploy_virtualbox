@@ -20,7 +20,7 @@ Example config
   vm-boot2 = dvd
   vm-nic1 = hostonly
   vm-hostonlyadapter1 = vboxnet0
-  vm-natpf2 = "ssh,tcp,,47022,,22"
+  vm-natpf2 = ssh,tcp,,47022,,22
   storage =
       --type dvddrive --medium ~/downloads/archives/mfsbsd-se-9.2-RELEASE-amd64.iso
       --medium vb-disk:boot
