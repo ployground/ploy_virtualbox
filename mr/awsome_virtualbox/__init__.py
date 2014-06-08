@@ -94,8 +94,28 @@ class Instance(PlainInstance):
     def get_massagers(self):
         return get_instance_massagers()
 
+    def _get_forwarding_info(self):
+        result = {}
+        for key, value in self._vminfo().items():
+            if not key.startswith('Forwarding'):
+                continue
+            if 'ssh' not in value:
+                continue
+            names = ('name', 'proto', 'hostip', 'hostport', 'guestip', 'guestport')
+            result.update(zip(names, value.split(',')))
+            if not result['hostip']:
+                result['hostip'] = "127.0.0.1"
+        return result
+
     def get_host(self):
-        raise NotImplementedError
+        try:
+            return PlainInstance.get_host(self)
+        except KeyError:
+            pass
+        return self._get_forwarding_info()['hostip']
+
+    def get_port(self):
+        return self._get_forwarding_info().get('hostport', 22)
 
     def status(self):
         vms = self.vb.list.vms()
