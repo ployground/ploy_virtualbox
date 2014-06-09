@@ -267,8 +267,6 @@ class Instance(PlainInstance):
                 log.error("Failed to create default storage controller for VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
             storagectls = self._vminfo(group='storagecontroller', namekey='name')
-        storage_path_massager = PathMassager(config.sectiongroupname, 'storage')
-        storage_path = storage_path_massager.path(config, self.id)
         for index, storage in enumerate(storages):
             args = shlex.split(storage)
             args_dict = {}
@@ -277,7 +275,7 @@ class Instance(PlainInstance):
             if 'medium' in args_dict:
                 medium = args_dict['medium']
                 if '.' in medium:
-                    medium = expand_path(medium, storage_path)
+                    medium = expand_path(medium, config.get_path('storage'))
                 elif medium.startswith('vb-disk:'):
                     medium = self.master.disks[medium[8:]].filename(self)
                 args_dict['medium'] = medium
