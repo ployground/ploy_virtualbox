@@ -258,7 +258,7 @@ class Instance(PlainInstance):
                 sys.exit(1)
         storagectls = self._vminfo(group='storagecontroller', namekey='name')
         # storageattach
-        storages = config.get('storage', '').splitlines()
+        storages = filter(None, config.get('storage', '').splitlines())
         if storages and not storagectls:
             log.info("Adding default 'sata' controller.")
             try:
