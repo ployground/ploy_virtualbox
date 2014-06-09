@@ -205,6 +205,29 @@ class Instance(PlainInstance):
         self.vb.unregistervm(self.id, delete=True)
         log.info("Instance terminated")
 
+    def _get_modifyvm_args(self, config, create):
+        args = []
+        for config_key, value in config.items():
+            if not config_key.startswith('vm-'):
+                continue
+            key = config_key[3:]
+            if not create and key.startswith(('natpf',)):
+                continue
+            if key.startswith('uartmode'):
+                if value == 'disconnected':
+                    pass
+                elif value.startswith(('server ', 'client ', 'file ')):
+                    value = value.split(None, 1)
+                    args.extend(("--%s" % key, value[0], expand_path(value[1], config.get_path(config_key))))
+                else:
+                    args.extend(("--%s" % key, expand_path(value, config.get_path(config_key))))
+            elif key.startswith('uart') and value != 'off':
+                value = value.split()
+                args.append("--%s" % key)
+                args.extend(value)
+            else:
+                args.extend(("--%s" % key, value))
+
     def start(self, overrides=None):
         config = self.get_config(overrides)
         status = self._status()
@@ -225,14 +248,7 @@ class Instance(PlainInstance):
             log.info("Instance already started")
             return True
         # modify vm
-        args = []
-        for key, value in config.items():
-            if not key.startswith('vm-'):
-                continue
-            key = key[3:]
-            if not create and key.startswith(('natpf',)):
-                continue
-            args.extend(("--%s" % key, value))
+        args = self._get_modifyvm_args(config, create)
         if args:
             try:
                 self.vb.modifyvm(self.id, *args)
