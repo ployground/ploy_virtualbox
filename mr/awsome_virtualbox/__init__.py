@@ -404,7 +404,7 @@ def get_macro_cleaners(main_config):
 
 
 def get_masters(aws):
-    masters = aws.config.get('vb-master', {})
+    masters = aws.config.get('vb-master', {'vb-master': {}})
     for master, master_config in masters.iteritems():
         yield Master(aws, master, master_config)
 
