@@ -28,7 +28,7 @@ class Instance(PlainInstance):
         if folder is None:
             folder = self.master.master_config.get('basefolder')
         if folder is None:
-            folder = self.vb.list.systemproperties().get('Default machine folder')
+            folder = self.vb.list_systemproperties().get('Default machine folder')
         if folder is None:
             raise VirtualBoxError("No basefolder configured for VM '%s'." % self.id)
         return folder
@@ -39,12 +39,11 @@ class Instance(PlainInstance):
 
     @lazy
     def vb(self):
-        import vbox
-        return vbox.pyVb.VirtualBox().cli.manage
+        from mr.awsome_virtualbox.vbox import VBoxManage
+        return VBoxManage()
 
     def _vminfo(self, group=None, namekey=None):
         info = self.vb.showvminfo(self.id)
-        info = dict(self.vb.cli.util.parseMachineReadableFmt(info))
         if group is None:
             return info
         result = {}
@@ -61,22 +60,6 @@ class Instance(PlainInstance):
             for key in list(result):
                 if key != result[key][namekey]:
                     del result[key]
-        return result
-
-    def _vmguestproperties(self):
-        rc, cmd, out = self.vb.cli.manage._cliAccessor.call(
-            ['guestproperty', 'enumerate', self.id])
-        if rc != 0:
-            raise subprocess.CalledProcessError(rc, cmd, out)
-        result = {}
-        matcher = re.compile('Name: (.*), value: (.*), timestamp: (.*), flags: (.*)')
-        for line in out.splitlines():
-            m = matcher.match(line)
-            if not m:
-                continue
-            name, value, timestamp, flags = m.groups()
-            flags = [x.strip() for x in flags.split(',')]
-            result[name] = dict(value=value, timestamp=timestamp, flags=flags)
         return result
 
     @property
@@ -97,7 +80,7 @@ class Instance(PlainInstance):
 
     def _status(self, vms=None):
         if vms is None:
-            vms = self.vb.list.vms()
+            vms = self.vb.list('vms')
         if self.id not in vms:
             return 'unavailable'
         status = self._vminfo()['VMState']
@@ -134,7 +117,7 @@ class Instance(PlainInstance):
         return self._get_forwarding_info().get('hostport', 22)
 
     def status(self):
-        vms = self.vb.list.vms()
+        vms = self.vb.list('vms')
         status = self._status(vms)
         if status == 'unavailable':
             log.info("Instance '%s' unavailable", self.id)
@@ -142,7 +125,7 @@ class Instance(PlainInstance):
         if status != 'running':
             log.info("Instance state: %s", status)
             return
-        gp = self._vmguestproperties()
+        gp = self.vb.guestproperty('enumerate', self.id)
         for ifnum, ifinfo in self._vminfo(group='nic').items():
             ifindex = int(ifnum) - 1
             if ifinfo[''] in ('none', 'nat'):
@@ -202,7 +185,7 @@ class Instance(PlainInstance):
                 time.sleep(1)
             print
         log.info("Terminating instance '%s'", self.id)
-        self.vb.unregistervm(self.id, delete=True)
+        self.vb.unregistervm(self.id, '--delete')
         log.info("Instance terminated")
 
     def _get_modifyvm_args(self, config, create):
@@ -238,8 +221,8 @@ class Instance(PlainInstance):
             log.info("Creating instance '%s'", self.id)
             try:
                 self.vb.createvm(
-                    name=self.id, basefolder=self._vmbasefolder,
-                    ostype=config.get('vm-ostype'), register=True)
+                    '--name', self.id, '--basefolder', self._vmbasefolder,
+                    '--ostype', config.get('vm-ostype', 'Other'), '--register')
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
@@ -263,13 +246,10 @@ class Instance(PlainInstance):
                 continue
             name = key[11:]
             args = shlex.split(value)
-            args_dict = {}
-            for k, v in zip(*[iter(args)] * 2):
-                args_dict[k[2:]] = v
             if name in storagectls:
                 continue
             try:
-                self.vb.storagectl(self.id, name, **args_dict)
+                self.vb.storagectl(self.id, '--name', name, *args)
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create storage controller '%s' for VM '%s':\n%s" % (name, self.id, e))
                 sys.exit(1)
@@ -279,7 +259,7 @@ class Instance(PlainInstance):
         if storages and not storagectls:
             log.info("Adding default 'sata' controller.")
             try:
-                self.vb.storagectl(self.id, 'sata', add='sata')
+                self.vb.storagectl(self.id, '--name', 'sata', '--add', 'sata')
             except subprocess.CalledProcessError as e:
                 log.error("Failed to create default storage controller for VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
@@ -298,19 +278,16 @@ class Instance(PlainInstance):
                 args_dict['medium'] = medium
             if 'storagectl' not in args_dict:
                 if len(storagectls) == 1:
-                    storagectl = storagectls.keys()[0]
+                    args_dict['storagectl'] = storagectls.keys()[0]
                 else:
                     log.error("You have to select the controller for storage '%s' on VM '%s'." % (index, self.id))
                     sys.exit(1)
-            else:
-                storagectl = args_dict['storagectl']
-                del args_dict['storagectl']
             if 'type' not in args_dict:
                 args_dict['type'] = 'hdd'
             if 'port' not in args_dict:
                 args_dict['port'] = str(index)
             try:
-                self.vb.storageattach(self.id, storagectl, **args_dict)
+                self.vb.storageattach(self.id, **args_dict)
             except subprocess.CalledProcessError as e:
                 log.error("Failed to attach storage #%s to VM '%s':\n%s" % (index + 1, self.id, e))
                 sys.exit(1)

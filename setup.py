@@ -24,8 +24,7 @@ setup(
     install_requires=[
         'setuptools',
         'mr.awsome >= 1.0rc6',
-        'lazy',
-        'vbox'],
+        'lazy'],
     entry_points="""
         [mr.awsome.plugins]
         virtualbox = mr.awsome_virtualbox:plugin
