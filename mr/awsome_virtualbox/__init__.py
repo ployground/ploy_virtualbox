@@ -227,6 +227,7 @@ class Instance(PlainInstance):
                 args.extend(value)
             else:
                 args.extend(("--%s" % key, value))
+        return args
 
     def start(self, overrides=None):
         config = self.get_config(overrides)
