@@ -397,8 +397,8 @@ def test_start_with_hdd(aws, configfile, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
         (['VBoxManage', 'storagectl', 'foo', '--name', 'sata', '--add', 'sata'], 0, '', ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.storagectl(name='sata'), ''),
-        (['VBoxManage', 'createhd', '--size', '102400', '--filename', boot_vdi, '--format', 'VDI'], 0, '', ''),
-        (['VBoxManage', 'storageattach', 'foo', '--medium', boot_vdi, '--storagectl', 'sata', '--type', 'hdd', '--port', '0'], 0, '', ''),
+        (['VBoxManage', 'createhd', '--filename', boot_vdi, '--format', 'VDI', '--size', '102400'], 0, '', ''),
+        (['VBoxManage', 'storageattach', 'foo', '--medium', boot_vdi, '--port', '0', '--storagectl', 'sata', '--type', 'hdd'], 0, '', ''),
         (['VBoxManage', 'startvm', 'foo'], 0, '', '')]
     aws(['./bin/aws', 'start', 'foo'])
     assert popen_mock.expect == []
@@ -428,7 +428,7 @@ def test_start_with_dvd(aws, configfile, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
         (['VBoxManage', 'storagectl', 'foo', '--name', 'sata', '--add', 'sata'], 0, '', ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.storagectl(name='sata'), ''),
-        (['VBoxManage', 'storageattach', 'foo', '--medium', medium, '--storagectl', 'sata', '--type', 'dvddrive', '--port', '0'], 0, '', ''),
+        (['VBoxManage', 'storageattach', 'foo', '--medium', medium, '--port', '0', '--storagectl', 'sata', '--type', 'dvddrive'], 0, '', ''),
         (['VBoxManage', 'startvm', 'foo'], 0, '', '')]
     aws(['./bin/aws', 'start', 'foo'])
     assert popen_mock.expect == []

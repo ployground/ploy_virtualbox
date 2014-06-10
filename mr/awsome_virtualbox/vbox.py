@@ -110,7 +110,7 @@ class VBoxManage:
         err = kw.pop('err', None)
         cmd_args = [self.executable]
         cmd_args.extend(args)
-        for k, v in kw.items():
+        for k, v in sorted(kw.items()):
             cmd_args.append("--%s" % k)
             cmd_args.append(v)
         log.debug(cmd_args)
