@@ -6,30 +6,9 @@ import pytest
 def vbm_infos(tempdir):
     import pkg_resources
     yield dict(
-        systemproperties='Default machine folder:          %s' % tempdir,
+        systemproperties='Default machine folder:          %s' % tempdir.directory,
         usage=pkg_resources.resource_string(
             'mr.awsome_virtualbox', 'vboxmanage.txt'))
-
-
-@pytest.yield_fixture
-def tempdir():
-    import shutil
-    import tempfile
-    directory = tempfile.mkdtemp()
-    yield directory
-    shutil.rmtree(directory)
-
-
-@pytest.yield_fixture
-def configfile(tempdir):
-    class Configfile:
-        def __init__(self, path):
-            self.path = path
-
-        def fill(self, lines):
-            with open(self.path, 'w') as f:
-                f.write('\n'.join(lines))
-    yield Configfile(os.path.join(tempdir, 'aws.conf'))
 
 
 @pytest.yield_fixture
@@ -53,12 +32,12 @@ def popen_mock(monkeypatch):
 
 
 @pytest.yield_fixture
-def aws(configfile, popen_mock, tempdir):
+def aws(awsconf, popen_mock):
     from mr.awsome import AWS
     import mr.awsome_virtualbox
-    configfile.fill([
+    awsconf.fill([
         '[vb-instance:foo]'])
-    aws = AWS(configpath=tempdir)
+    aws = AWS(configpath=awsconf.directory)
     aws.plugins = {'virtualbox': mr.awsome_virtualbox.plugin}
     yield aws
 
@@ -98,7 +77,7 @@ class VMInfo:
         return self
 
 
-def test_start(aws, popen_mock, vbm_infos, caplog):
+def test_start(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -106,7 +85,7 @@ def test_start(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -118,10 +97,10 @@ def test_start(aws, popen_mock, vbm_infos, caplog):
         "Creating instance 'foo'"]
 
 
-def test_start_status(aws, configfile, popen_mock, vbm_infos, caplog):
+def test_start_status(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
-    configfile.fill([
+    awsconf.fill([
         '[vb-instance:foo]',
         'vm-nic1 = hostonly'])
     vminfo = VMInfo()
@@ -129,7 +108,7 @@ def test_start_status(aws, configfile, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'modifyvm', 'foo', '--nic1', 'hostonly'], 0, '', ''),
@@ -149,7 +128,7 @@ def test_start_status(aws, configfile, popen_mock, vbm_infos, caplog):
         "Instance running."]
 
 
-def test_start_stop(aws, popen_mock, vbm_infos, caplog):
+def test_start_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -157,7 +136,7 @@ def test_start_stop(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -177,7 +156,7 @@ def test_start_stop(aws, popen_mock, vbm_infos, caplog):
         "Instance stopped"]
 
 
-def test_start_stop_stop(aws, popen_mock, vbm_infos, caplog):
+def test_start_stop_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -185,7 +164,7 @@ def test_start_stop_stop(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -210,7 +189,7 @@ def test_start_stop_stop(aws, popen_mock, vbm_infos, caplog):
         "Instance not stopped"]
 
 
-def test_start_stop_status(aws, popen_mock, vbm_infos, caplog):
+def test_start_stop_status(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -218,7 +197,7 @@ def test_start_stop_status(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -242,7 +221,7 @@ def test_start_stop_status(aws, popen_mock, vbm_infos, caplog):
         "Instance state: stopped"]
 
 
-def test_start_stop_acpi(aws, popen_mock, vbm_infos, caplog):
+def test_start_stop_acpi(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -251,7 +230,7 @@ def test_start_stop_acpi(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -273,7 +252,7 @@ def test_start_stop_acpi(aws, popen_mock, vbm_infos, caplog):
         "Instance stopped"]
 
 
-def test_start_stop_acpi_force(aws, popen_mock, vbm_infos, monkeypatch, caplog):
+def test_start_stop_acpi_force(aws, popen_mock, tempdir, vbm_infos, monkeypatch, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -282,7 +261,7 @@ def test_start_stop_acpi_force(aws, popen_mock, vbm_infos, monkeypatch, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -311,7 +290,7 @@ def test_start_stop_acpi_force(aws, popen_mock, vbm_infos, monkeypatch, caplog):
         "Instance stopped"]
 
 
-def test_start_terminate(aws, popen_mock, vbm_infos, caplog):
+def test_start_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -319,7 +298,7 @@ def test_start_terminate(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -342,7 +321,7 @@ def test_start_terminate(aws, popen_mock, vbm_infos, caplog):
         "Instance terminated"]
 
 
-def test_start_stop_terminate(aws, popen_mock, vbm_infos, caplog):
+def test_start_stop_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -350,7 +329,7 @@ def test_start_stop_terminate(aws, popen_mock, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -376,21 +355,21 @@ def test_start_stop_terminate(aws, popen_mock, vbm_infos, caplog):
         "Instance terminated"]
 
 
-def test_start_with_hdd(aws, configfile, popen_mock, vbm_infos, caplog):
+def test_start_with_hdd(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
-    configfile.fill([
+    awsconf.fill([
         '[vb-disk:boot]',
         'size = 102400',
         '[vb-instance:foo]',
         'storage = --medium vb-disk:boot'])
     vminfo = VMInfo()
-    boot_vdi = os.path.join(aws.configpath, 'foo', 'boot.vdi')
+    boot_vdi = os.path.join(tempdir.directory, 'foo', 'boot.vdi')
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
@@ -407,21 +386,21 @@ def test_start_with_hdd(aws, configfile, popen_mock, vbm_infos, caplog):
         "Adding default 'sata' controller."]
 
 
-def test_start_with_dvd(aws, configfile, popen_mock, vbm_infos, caplog):
+def test_start_with_dvd(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
-    configfile.fill([
+    awsconf.fill([
         '[vb-disk:boot]',
         'size = 102400',
         '[vb-instance:foo]',
         'storage = --type dvddrive --medium mfsbsd.iso'])
     vminfo = VMInfo()
-    medium = os.path.join(aws.configpath, 'mfsbsd.iso')
+    medium = os.path.join(awsconf.directory, 'mfsbsd.iso')
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
         (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], ''),
-        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', aws.configpath, '--ostype', 'Other', '--register'], 0, '', ''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
