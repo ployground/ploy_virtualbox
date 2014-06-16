@@ -20,7 +20,7 @@ def popen_mock(monkeypatch):
         def communicate(self):
             try:
                 expected = self.expect.pop(0)
-            except IndexError:
+            except IndexError:  # pragma: no cover - only on failures
                 expected = (['VBoxManage'], 0, '', '')
             cmd_args, rc, out, err = expected
             assert self.cmd_args == cmd_args
