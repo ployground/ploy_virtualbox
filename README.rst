@@ -20,6 +20,7 @@ Example config
   vm-boot2 = dvd
   vm-nic1 = hostonly
   vm-hostonlyadapter1 = vboxnet0
+  vm-nic2 = nat
   vm-natpf2 = ssh,tcp,,47022,,22
   storage =
       --type dvddrive --medium ~/downloads/archives/mfsbsd-se-9.2-RELEASE-amd64.iso
@@ -29,7 +30,7 @@ Example config
 Changelog
 =========
 
-1.0b1 - Unreleased
+1.0b1 - 2014-06-16
 ------------------
 
 * Initial release
