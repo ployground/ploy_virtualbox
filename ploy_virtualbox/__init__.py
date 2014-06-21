@@ -1,8 +1,8 @@
 from lazy import lazy
-from mr.awsome.common import BaseMaster
-from mr.awsome.config import BooleanMassager, PathMassager
-from mr.awsome.config import expand_path
-from mr.awsome.plain import Instance as PlainInstance
+from ploy.common import BaseMaster
+from ploy.config import BooleanMassager, PathMassager
+from ploy.config import expand_path
+from ploy.plain import Instance as PlainInstance
 import logging
 import os
 import re
@@ -12,7 +12,7 @@ import sys
 import time
 
 
-log = logging.getLogger('mr.awsome.virtualbox')
+log = logging.getLogger('ploy_virtualbox')
 
 
 class VirtualBoxError(Exception):
@@ -39,7 +39,7 @@ class Instance(PlainInstance):
 
     @lazy
     def vb(self):
-        from mr.awsome_virtualbox.vbox import VBoxManage
+        from ploy_virtualbox.vbox import VBoxManage
         return VBoxManage()
 
     def _vminfo(self, group=None, namekey=None):
@@ -395,10 +395,10 @@ def get_macro_cleaners(main_config):
     return {"vb-instance": clean_instance}
 
 
-def get_masters(aws):
-    masters = aws.config.get('vb-master', {'vb-master': {}})
+def get_masters(ctrl):
+    masters = ctrl.config.get('vb-master', {'vb-master': {}})
     for master, master_config in masters.iteritems():
-        yield Master(aws, master, master_config)
+        yield Master(ctrl, master, master_config)
 
 
 plugin = dict(

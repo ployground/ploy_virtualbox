@@ -33,6 +33,8 @@ Changelog
 1.0b2 - Unreleased
 ------------------
 
+* Renamed mr.awsome to ploy and mr.awsome.virtualbox to ploy_virtualbox.
+  [fschulze]
 
 
 1.0b1 - 2014-06-16

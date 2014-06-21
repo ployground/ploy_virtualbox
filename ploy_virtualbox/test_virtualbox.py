@@ -1,3 +1,4 @@
+import logging
 import os
 import pytest
 
@@ -8,7 +9,7 @@ def vbm_infos(tempdir):
     yield dict(
         systemproperties='Default machine folder:          %s' % tempdir.directory,
         usage=pkg_resources.resource_string(
-            'mr.awsome_virtualbox', 'vboxmanage.txt'))
+            'ploy_virtualbox', 'vboxmanage.txt'))
 
 
 @pytest.yield_fixture
@@ -32,14 +33,21 @@ def popen_mock(monkeypatch):
 
 
 @pytest.yield_fixture
-def aws(awsconf, popen_mock):
-    from mr.awsome import AWS
-    import mr.awsome_virtualbox
-    awsconf.fill([
+def ctrl(ployconf):
+    from ploy import Controller
+    import ploy_virtualbox
+    ployconf.fill([
         '[vb-instance:foo]'])
-    aws = AWS(configpath=awsconf.directory)
-    aws.plugins = {'virtualbox': mr.awsome_virtualbox.plugin}
-    yield aws
+    ctrl = Controller(configpath=ployconf.directory)
+    ctrl.plugins = {'virtualbox': ploy_virtualbox.plugin}
+    yield ctrl
+
+
+def caplog_messages(caplog, level=logging.INFO):
+    return [
+        x.message
+        for x in caplog.records()
+        if x.levelno >= level]
 
 
 class VMInfo:
@@ -77,7 +85,7 @@ class VMInfo:
         return self
 
 
-def test_start(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -91,16 +99,16 @@ def test_start(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
         (['VBoxManage', 'startvm', 'foo'], 0, '', '')]
-    aws(['./bin/aws', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'"]
 
 
-def test_start_status(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_status(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
-    awsconf.fill([
+    ployconf.fill([
         '[vb-instance:foo]',
         'vm-nic1 = hostonly'])
     vminfo = VMInfo()
@@ -119,16 +127,16 @@ def test_start_status(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('running'), ''),
         (['VBoxManage', 'guestproperty', 'enumerate', 'foo'], 0, 'Name: /VirtualBox/GuestInfo/Net/0/V4/IP, value: 192.168.56.3, timestamp: 1, flags: ', ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'status', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'status', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "IP for hostonly interface: 192.168.56.3",
         "Instance running."]
 
 
-def test_start_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_stop(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -146,17 +154,17 @@ def test_start_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('running'), ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
         (['VBoxManage', 'controlvm', 'foo', 'poweroff'], 0, '', '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
         "Instance stopped"]
 
 
-def test_start_stop_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_stop_stop(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -176,11 +184,11 @@ def test_start_stop_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'controlvm', 'foo', 'poweroff'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
@@ -189,7 +197,7 @@ def test_start_stop_stop(aws, popen_mock, tempdir, vbm_infos, caplog):
         "Instance not stopped"]
 
 
-def test_start_stop_status(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_stop_status(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -209,11 +217,11 @@ def test_start_stop_status(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'controlvm', 'foo', 'poweroff'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
-    aws(['./bin/aws', 'status', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'status', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
@@ -221,7 +229,7 @@ def test_start_stop_status(aws, popen_mock, tempdir, vbm_infos, caplog):
         "Instance state: stopped"]
 
 
-def test_start_stop_acpi(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_stop_acpi(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -242,17 +250,17 @@ def test_start_stop_acpi(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'controlvm', 'foo', 'acpipowerbutton'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Trying to stop instance with ACPI:",
         "Instance stopped"]
 
 
-def test_start_stop_acpi_force(aws, popen_mock, tempdir, vbm_infos, monkeypatch, caplog):
+def test_start_stop_acpi_force(ctrl, popen_mock, tempdir, vbm_infos, monkeypatch, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -279,10 +287,10 @@ def test_start_stop_acpi_force(aws, popen_mock, tempdir, vbm_infos, monkeypatch,
             (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), '')])
     popen_mock.expect.append((['VBoxManage', 'controlvm', 'foo', 'poweroff'], 0, '', ''))
     monkeypatch.setattr('time.sleep', lambda d: None)
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Trying to stop instance with ACPI:",
@@ -290,7 +298,7 @@ def test_start_stop_acpi_force(aws, popen_mock, tempdir, vbm_infos, monkeypatch,
         "Instance stopped"]
 
 
-def test_start_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -310,10 +318,10 @@ def test_start_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'unregistervm', 'foo', '--delete'], 0, '', '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'terminate', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'terminate', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Waiting for instance to stop",
@@ -321,7 +329,7 @@ def test_start_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
         "Instance terminated"]
 
 
-def test_start_stop_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_stop_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -342,11 +350,11 @@ def test_start_stop_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'unregistervm', 'foo', '--delete'], 0, '', '')]
-    aws(['./bin/aws', 'start', 'foo'])
-    aws(['./bin/aws', 'stop', 'foo'])
-    aws(['./bin/aws', 'terminate', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'terminate', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
@@ -355,10 +363,10 @@ def test_start_stop_terminate(aws, popen_mock, tempdir, vbm_infos, caplog):
         "Instance terminated"]
 
 
-def test_start_with_hdd(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_with_hdd(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
-    awsconf.fill([
+    ployconf.fill([
         '[vb-disk:boot]',
         'size = 102400',
         '[vb-instance:foo]',
@@ -379,23 +387,23 @@ def test_start_with_hdd(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'createhd', '--filename', boot_vdi, '--format', 'VDI', '--size', '102400'], 0, '', ''),
         (['VBoxManage', 'storageattach', 'foo', '--medium', boot_vdi, '--port', '0', '--storagectl', 'sata', '--type', 'hdd'], 0, '', ''),
         (['VBoxManage', 'startvm', 'foo'], 0, '', '')]
-    aws(['./bin/aws', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Adding default 'sata' controller."]
 
 
-def test_start_with_dvd(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_with_dvd(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
     import uuid
     uid = str(uuid.uuid4())
-    awsconf.fill([
+    ployconf.fill([
         '[vb-disk:boot]',
         'size = 102400',
         '[vb-instance:foo]',
         'storage = --type dvddrive --medium mfsbsd.iso'])
     vminfo = VMInfo()
-    medium = os.path.join(awsconf.directory, 'mfsbsd.iso')
+    medium = os.path.join(ployconf.directory, 'mfsbsd.iso')
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', ''),
         (['VBoxManage'], 0, vbm_infos['usage'], ''),
@@ -409,35 +417,35 @@ def test_start_with_dvd(aws, awsconf, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.storagectl(name='sata'), ''),
         (['VBoxManage', 'storageattach', 'foo', '--medium', medium, '--port', '0', '--storagectl', 'sata', '--type', 'dvddrive'], 0, '', ''),
         (['VBoxManage', 'startvm', 'foo'], 0, '', '')]
-    aws(['./bin/aws', 'start', 'foo'])
+    ctrl(['./bin/ploy', 'start', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
         "Adding default 'sata' controller."]
 
 
-def test_status(aws, popen_mock, caplog):
+def test_status(ctrl, popen_mock, caplog):
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', '')]
-    aws(['./bin/aws', 'status', 'foo'])
+    ctrl(['./bin/ploy', 'status', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Instance 'foo' unavailable"]
 
 
-def test_stop(aws, popen_mock, caplog):
+def test_stop(ctrl, popen_mock, caplog):
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', '')]
-    aws(['./bin/aws', 'stop', 'foo'])
+    ctrl(['./bin/ploy', 'stop', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Instance 'foo' unavailable"]
 
 
-def test_terminate(aws, popen_mock, caplog):
+def test_terminate(ctrl, popen_mock, caplog):
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', '')]
-    aws(['./bin/aws', 'terminate', 'foo'])
+    ctrl(['./bin/ploy', 'terminate', 'foo'])
     assert popen_mock.expect == []
-    assert [x.message for x in caplog.records()] == [
+    assert caplog_messages(caplog) == [
         "Instance 'foo' unavailable"]

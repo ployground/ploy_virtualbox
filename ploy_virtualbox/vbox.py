@@ -4,7 +4,7 @@ import re
 import subprocess
 
 
-log = logging.getLogger('mr.awsome.virtualbox')
+log = logging.getLogger('ploy_virtualbox.vbox')
 
 
 def dequote(txt):

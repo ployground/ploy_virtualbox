@@ -11,21 +11,20 @@ version = "1.0b2"
 
 setup(
     version=version,
-    description="A plugin for mr.awsome providing support for VMs using VirtualBox.",
+    description="A plugin for ploy providing support for VMs using VirtualBox.",
     long_description=README + "\n\n",
-    name="mr.awsome.virtualbox",
+    name="ploy_virtualbox",
     author='Florian Schulze',
     author_email='florian.schulze@gmx.net',
-    url='http://github.com/fschulze/mr.awsome.virtualbox',
+    url='http://github.com/ployground/ploy_virtualbox',
     include_package_data=True,
     zip_safe=False,
-    packages=['mr', 'mr.awsome_virtualbox'],
-    namespace_packages=['mr'],
+    packages=['ploy_virtualbox'],
     install_requires=[
         'setuptools',
-        'mr.awsome >= 1.0rc8',
+        'ploy >= 1.0rc9',
         'lazy'],
     entry_points="""
-        [mr.awsome.plugins]
-        virtualbox = mr.awsome_virtualbox:plugin
+        [ploy.plugins]
+        virtualbox = ploy_virtualbox:plugin
     """)
