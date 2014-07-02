@@ -255,7 +255,7 @@ class Instance(PlainInstance):
                 sys.exit(1)
         storagectls = self._vminfo(group='storagecontroller', namekey='name')
         # storageattach
-        storages = filter(None, config.get('storage', '').splitlines())
+        storages = list(filter(None, config.get('storage', '').splitlines()))
         if storages and not storagectls:
             log.info("Adding default 'sata' controller.")
             try:
@@ -278,7 +278,7 @@ class Instance(PlainInstance):
                 args_dict['medium'] = medium
             if 'storagectl' not in args_dict:
                 if len(storagectls) == 1:
-                    args_dict['storagectl'] = storagectls.keys()[0]
+                    args_dict['storagectl'] = list(storagectls.keys())[0]
                 else:
                     log.error("You have to select the controller for storage '%s' on VM '%s'." % (index, self.id))
                     sys.exit(1)
@@ -397,7 +397,7 @@ def get_macro_cleaners(main_config):
 
 def get_masters(ctrl):
     masters = ctrl.config.get('vb-master', {'vb-master': {}})
-    for master, master_config in masters.iteritems():
+    for master, master_config in masters.items():
         yield Master(ctrl, master, master_config)
 
 

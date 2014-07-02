@@ -87,7 +87,7 @@ class VBoxManage:
     def commands(self):
         lines = iter(x for x in self(rc=0, err='') if x.strip())
         for line in lines:
-            if line.startswith('Commands:'):
+            if line.startswith(b'Commands:'):
                 break
         result = set()
         count = 0
@@ -95,7 +95,7 @@ class VBoxManage:
             if line[:4].strip():
                 count = 0
             if not count:
-                result.add(line[:28].strip().split(None, 1)[0])
+                result.add(line[:28].strip().split(None, 1)[0].decode('ascii'))
             count += 1
         return sorted(result)
 

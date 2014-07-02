@@ -33,6 +33,9 @@ Changelog
 1.0b2 - Unreleased
 ------------------
 
+* Python 3 compatibility.
+  [fschulze]
+
 * Renamed mr.awsome to ploy and mr.awsome.virtualbox to ploy_virtualbox.
   [fschulze]
 
