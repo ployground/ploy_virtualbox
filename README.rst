@@ -30,7 +30,7 @@ Example config
 Changelog
 =========
 
-1.0b2 - Unreleased
+1.0b2 - 2014-07-04
 ------------------
 
 * Python 3 compatibility.
