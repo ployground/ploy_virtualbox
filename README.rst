@@ -30,9 +30,11 @@ Example config
 Changelog
 =========
 
-1.0b3 - Unreleased
+1.0b3 - 2014-07-08
 ------------------
 
+* Packaging and test fixes.
+  [fschulze]
 
 
 1.0b2 - 2014-07-04

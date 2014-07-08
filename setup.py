@@ -11,7 +11,7 @@ version = "1.0b3"
 
 setup(
     version=version,
-    description="A plugin for ploy providing support for VMs using VirtualBox.",
+    description="Plugin for ploy to provision virtual machines using VirtualBox.",
     long_description=README + "\n\n",
     name="ploy_virtualbox",
     author='Florian Schulze',
@@ -31,7 +31,7 @@ setup(
     packages=['ploy_virtualbox'],
     install_requires=[
         'setuptools',
-        'ploy >= 1.0rc10',
+        'ploy >= 1.0rc13',
         'lazy'],
     entry_points="""
         [ploy.plugins]
