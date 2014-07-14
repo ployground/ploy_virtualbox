@@ -33,6 +33,8 @@ Changelog
 1.0b4 - Unreleased
 ------------------
 
+* Add support for instances that have manually been put into ``saved`` state.
+  [fschulze]
 
 
 1.0b3 - 2014-07-08

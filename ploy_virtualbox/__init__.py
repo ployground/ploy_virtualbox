@@ -88,6 +88,8 @@ class Instance(PlainInstance):
             return 'running'
         elif status == 'poweroff':
             return 'stopped'
+        elif status == 'saved':
+            return 'saved'
         raise VirtualBoxError("Don't know how to handle VM '%s' in state '%s'" % (self.id, status))
 
     def get_massagers(self):
@@ -176,7 +178,7 @@ class Instance(PlainInstance):
         if status == 'running':
             log.info("Stopping instance '%s'", self.id)
             self.vb.controlvm(self.id, 'poweroff')
-        if status != 'stopped':
+        if status not in ('stopped', 'saved'):
             log.info('Waiting for instance to stop')
             while status != 'stopped':
                 status = self._status()
@@ -212,6 +214,16 @@ class Instance(PlainInstance):
                 args.extend(("--%s" % key, value))
         return args
 
+    def _start(self, config):
+        try:
+            kw = {}
+            if config.get('headless', self._vmheadless):
+                kw['type'] = 'headless'
+            self.vb.startvm(self.id, **kw)
+        except subprocess.CalledProcessError as e:
+            log.error("Failed to start VM '%s':\n%s" % (self.id, e))
+            sys.exit(1)
+
     def start(self, overrides=None):
         config = self.get_config(overrides)
         status = self._status()
@@ -227,10 +239,13 @@ class Instance(PlainInstance):
                 log.error("Failed to create VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
             status = self._status()
-        if status != 'stopped':
+        if status not in ('stopped', 'saved'):
             log.info("Instance state: %s", status)
             log.info("Instance already started")
             return True
+        if status == 'saved':
+            self._start(config)
+            return
         # modify vm
         args = self._get_modifyvm_args(config, create)
         if args:
@@ -291,14 +306,7 @@ class Instance(PlainInstance):
             except subprocess.CalledProcessError as e:
                 log.error("Failed to attach storage #%s to VM '%s':\n%s" % (index + 1, self.id, e))
                 sys.exit(1)
-        try:
-            kw = {}
-            if config.get('headless', self._vmheadless):
-                kw['type'] = 'headless'
-            self.vb.startvm(self.id, **kw)
-        except subprocess.CalledProcessError as e:
-            log.error("Failed to start VM '%s':\n%s" % (self.id, e))
-            sys.exit(1)
+        self._start(config)
 
 
 class Disk(object):
