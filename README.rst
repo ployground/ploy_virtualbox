@@ -39,7 +39,7 @@ Example config
 Changelog
 =========
 
-1.0b4 - Unreleased
+1.0b4 - 2014-07-15
 ------------------
 
 * Verify and if possible create host only interfaces and dhcpservers.
