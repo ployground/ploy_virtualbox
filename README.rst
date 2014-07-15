@@ -33,6 +33,9 @@ Changelog
 1.0b4 - Unreleased
 ------------------
 
+* Verify and if possible create host only interfaces and dhcpservers.
+  [fschulze]
+
 * Add support for instances that have manually been put into ``saved`` state.
   [fschulze]
 

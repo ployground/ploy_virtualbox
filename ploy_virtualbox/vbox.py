@@ -62,11 +62,43 @@ class VBoxManage:
             result[name] = dict(value=value, timestamp=timestamp, flags=flags)
         return result
 
+    def hostonlyif(self, cmd, *args, **kw):
+        key = 'hostonlyif_%s' % cmd
+        if hasattr(self, key):
+            return getattr(self, key)(*args, **kw)
+        return self('hostonlyif', cmd, *args, rc=0, **kw)
+
     def list(self, cmd, *args, **kw):
         key = 'list_%s' % cmd
         if hasattr(self, key):
             return getattr(self, key)(*args, **kw)
         return self('list', cmd, *args, **kw)
+
+    def list_dhcpservers(self, *args, **kw):
+        lines = self('list', 'dhcpservers', *args, rc=0, err='', **kw)
+        block = []
+        result = {}
+        for line in lines:
+            if not line:
+                info = parse_list_result(':', block)
+                result[info['NetworkName']] = info
+                block = []
+            else:
+                block.append(line)
+        return result
+
+    def list_hostonlyifs(self, *args, **kw):
+        lines = self('list', 'hostonlyifs', *args, rc=0, err='', **kw)
+        block = []
+        result = {}
+        for line in lines:
+            if not line:
+                info = parse_list_result(':', block)
+                result[info['Name']] = info
+                block = []
+            else:
+                block.append(line)
+        return result
 
     def list_systemproperties(self, *args, **kw):
         lines = self('list', 'systemproperties', *args, rc=0, err='', **kw)

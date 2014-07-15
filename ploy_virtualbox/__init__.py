@@ -1,5 +1,5 @@
 from lazy import lazy
-from ploy.common import BaseMaster
+from ploy.common import BaseMaster, yesno
 from ploy.config import BooleanMassager, PathMassager
 from ploy.config import expand_path
 from ploy.plain import Instance as PlainInstance
@@ -196,8 +196,11 @@ class Instance(PlainInstance):
             if not config_key.startswith('vm-'):
                 continue
             key = config_key[3:]
-            if not create and key.startswith(('natpf',)):
+            if not create and key.startswith(('natpf', 'hostonlyadapter')):
                 continue
+            if key.startswith('hostonlyadapter'):
+                hostonlyif = self.master.hostonlyifs[value]
+                hostonlyif.ensure(self)
             if key.startswith('uartmode'):
                 if value == 'disconnected':
                     pass
@@ -309,6 +312,59 @@ class Instance(PlainInstance):
         self._start(config)
 
 
+class DHCPServer(object):
+    def __init__(self, name, config):
+        self.name = name
+        self.config = config
+
+    def ensure(self, instance):
+        dhcpservers = instance.vb.list('dhcpservers')
+        name = "HostInterfaceNetworking-%s" % self.name
+        kw = {}
+        for key in ('ip', 'netmask', 'lowerip', 'upperip'):
+            if key not in self.config:
+                log.error("The '%s' option is required for dhcpserver '%s'." % (key, self.name))
+                sys.exit(1)
+            kw[key] = self.config[key]
+        if name not in dhcpservers:
+            try:
+                instance.vb.dhcpserver('add', netname=name, **kw)
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to add dhcpserver '%s':\n%s" % (self.name, e))
+                sys.exit(1)
+            log.info("Added dhcpserver '%s'." % self.name)
+        dhcpserver = instance.vb.list('dhcpservers')[name]
+        matches = True
+        if 'ip' in self.config:
+            if dhcpserver['IP'] != self.config['ip']:
+                log.error("The host only interface '%s' has an IP '%s' that doesn't match the config '%s'." % (
+                    self.name, dhcpserver['IP'], self.config['ip']))
+                matches = False
+        if 'netmask' in self.config:
+            if dhcpserver['NetworkMask'] != self.config['netmask']:
+                log.error("The host only interface '%s' has an netmask '%s' that doesn't match the config '%s'." % (
+                    self.name, dhcpserver['NetworkMask'], self.config['netmask']))
+                matches = False
+        if 'lower-ip' in self.config:
+            if dhcpserver['lowerIPAddress'] != self.config['lower-ip']:
+                log.error("The host only interface '%s' has a lower IP '%s' that doesn't match the config '%s'." % (
+                    self.name, dhcpserver['lowerIPAddress'], self.config['lower-ip']))
+                matches = False
+        if 'upper-ip' in self.config:
+            if dhcpserver['upperIPAddress'] != self.config['upper-ip']:
+                log.error("The host only interface '%s' has a upper IP '%s' that doesn't match the config '%s'." % (
+                    self.name, dhcpserver['upperIPAddress'], self.config['upper-ip']))
+                matches = False
+        if not matches:
+            if not yesno("Should the dhcpserver '%s' be modified to match the config?" % self.name):
+                sys.exit(1)
+            try:
+                instance.vb.dhcpserver('modify', netname=name, **kw)
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to modify dhcpserver '%s':\n%s" % (self.name, e))
+                sys.exit(1)
+
+
 class Disk(object):
     def __init__(self, name, config):
         self.name = name
@@ -348,16 +404,82 @@ class Disk(object):
         return self.config.get('variant')
 
 
-class Disks(object):
+class HostOnlyIF(object):
+    def __init__(self, name, config):
+        self.name = name
+        self.config = config
+
+    def ensure(self, instance):
+        hostonlyifs = instance.vb.list('hostonlyifs')
+        created = False
+        if self.name not in hostonlyifs:
+            newnames = set("vboxnet%s" % x for x in range(len(hostonlyifs) + 1))
+            newnames = newnames - set(hostonlyifs)
+            nextname = min(newnames)
+            if nextname != self.name:
+                log.error(
+                    "The host only interface '%s' doesn't exist. "
+                    "The next one to be created would be '%s'. "
+                    "Since this doesn't match, we abort. "
+                    "Please fix the config or handle the creation manually." % (
+                        self.name, nextname))
+                sys.exit(1)
+            try:
+                instance.vb.hostonlyif('create')
+                created = True
+            except subprocess.CalledProcessError as e:
+                log.error("Failed to create host only interface '%s':\n%s" % (self.name, e))
+                sys.exit(1)
+            log.info("Created host only interface '%s'." % self.name)
+        hostonlyif = instance.vb.list('hostonlyifs')[self.name]
+        if created:
+            kw = {}
+            if 'ip' in self.config:
+                kw['ip'] = self.config['ip']
+            if kw:
+                try:
+                    instance.vb.hostonlyif('ipconfig', self.name, **kw)
+                except subprocess.CalledProcessError as e:
+                    log.error("Failed to configure host only interface '%s':\n%s" % (self.name, e))
+                    sys.exit(1)
+        else:
+            if 'ip' in self.config:
+                if hostonlyif['IPAddress'] != self.config['ip']:
+                    log.error("The host only interface '%s' has an IP '%s' that doesn't match the config '%s'." % (
+                        self.name, hostonlyif['IPAddress'], self.config['ip']))
+                    sys.exit(1)
+        try:
+            dhcpserver = instance.master.dhcpservers[self.name]
+        except KeyError:
+            return
+        dhcpserver.ensure(instance)
+
+
+class InfoBase(object):
     def __init__(self, master):
         self.master = master
-        self.config = self.master.main_config.get('vb-disk', {})
+        self.config = self.master.main_config.get(self.sectiongroupname, {})
         self._cache = {}
 
     def __getitem__(self, key):
         if key not in self._cache:
-            self._cache[key] = Disk(key, self.config[key])
+            self._cache[key] = self.klass(key, self.config[key])
         return self._cache[key]
+
+
+class DHCPServers(InfoBase):
+    sectiongroupname = 'vb-dhcpserver'
+    klass = DHCPServer
+
+
+class Disks(InfoBase):
+    sectiongroupname = 'vb-disk'
+    klass = Disk
+
+
+class HostOnlyIFs(InfoBase):
+    sectiongroupname = 'vb-hostonlyif'
+    klass = HostOnlyIF
 
 
 class Master(BaseMaster):
@@ -367,8 +489,16 @@ class Master(BaseMaster):
         'vb-instance': Instance}
 
     @lazy
+    def dhcpservers(self):
+        return DHCPServers(self)
+
+    @lazy
     def disks(self):
         return Disks(self)
+
+    @lazy
+    def hostonlyifs(self):
+        return HostOnlyIFs(self)
 
 
 def get_instance_massagers(sectiongroupname='instance'):
