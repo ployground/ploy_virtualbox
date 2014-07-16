@@ -42,6 +42,9 @@ Changelog
 1.0b5 - Unreleased
 ------------------
 
+* Renamed ``vb-master`` to ``virtualbox``, so the uids of instances are nicer.
+  [fschulze]
+
 * Enable DHCP server when creating or modifying it.
   [fschulze]
 

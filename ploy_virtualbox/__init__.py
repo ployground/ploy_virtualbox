@@ -534,7 +534,7 @@ def get_macro_cleaners(main_config):
 
 
 def get_masters(ctrl):
-    masters = ctrl.config.get('vb-master', {'vb-master': {}})
+    masters = ctrl.config.get('vb-master', {'virtualbox': {}})
     for master, master_config in masters.items():
         yield Master(ctrl, master, master_config)
 
