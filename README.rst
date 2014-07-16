@@ -42,6 +42,8 @@ Changelog
 1.0b5 - Unreleased
 ------------------
 
+* Enable DHCP server when creating or modifying it.
+  [fschulze]
 
 
 1.0b4 - 2014-07-15

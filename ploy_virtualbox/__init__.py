@@ -328,7 +328,7 @@ class DHCPServer(object):
             kw[key] = self.config[key]
         if name not in dhcpservers:
             try:
-                instance.vb.dhcpserver('add', netname=name, **kw)
+                instance.vb.dhcpserver('add', '--enable', netname=name, **kw)
             except subprocess.CalledProcessError as e:
                 log.error("Failed to add dhcpserver '%s':\n%s" % (self.name, e))
                 sys.exit(1)
@@ -359,7 +359,7 @@ class DHCPServer(object):
             if not yesno("Should the dhcpserver '%s' be modified to match the config?" % self.name):
                 sys.exit(1)
             try:
-                instance.vb.dhcpserver('modify', netname=name, **kw)
+                instance.vb.dhcpserver('modify', '--enable', netname=name, **kw)
             except subprocess.CalledProcessError as e:
                 log.error("Failed to modify dhcpserver '%s':\n%s" % (self.name, e))
                 sys.exit(1)
