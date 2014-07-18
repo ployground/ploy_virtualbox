@@ -86,6 +86,7 @@ class Instance(PlainInstance):
         for retry in (True, False):
             try:
                 status = self._vminfo()['VMState']
+                break
             except subprocess.CalledProcessError as e:
                 if retry:
                     time.sleep(0.5)
