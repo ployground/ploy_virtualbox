@@ -83,7 +83,15 @@ class Instance(PlainInstance):
             vms = self.vb.list('vms')
         if self.id not in vms:
             return 'unavailable'
-        status = self._vminfo()['VMState']
+        for retry in (True, False):
+            try:
+                status = self._vminfo()['VMState']
+            except subprocess.CalledProcessError as e:
+                if retry:
+                    time.sleep(0.5)
+                else:
+                    log.error("Couldn't get status of '%s':\n%s" % (self.config_id, e))
+                    sys.exit(1)
         if status == 'running':
             return 'running'
         elif status == 'poweroff':
