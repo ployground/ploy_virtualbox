@@ -1,7 +1,7 @@
 Overview
 ========
 
-The ploy_virtualbox plugin provides integration of `VirtualBos`_ with `ploy`_.
+The ploy_virtualbox plugin provides integration of `VirtualBox`_ with `ploy`_.
 
 .. _VirtualBox: https://www.virtualbox.org
 .. _ploy: https://github.com/ployground/
@@ -11,8 +11,6 @@ Installation
 ============
 
 ploy_virtualbox is best installed with easy_install, pip or with zc.recipe.egg in a buildout.
-
-Once installed, it's functionality is immediately usable with ploy.
 
 
 Master
@@ -31,6 +29,7 @@ The default master for ploy_virtualbox is ``virtualbox`` and has the following o
 ``basefolder``
   The basefolder for VirtualBox data.
   If not set, the VirtualBox default is used.
+  This varies depending on the OS that ploy is running in.
   When not provided as absolute path, then it's relative to ``ploy.conf``.
 
 Example::
@@ -112,6 +111,7 @@ Example::
   [vb-hostonlyif:vboxnet0]
   ip = 192.168.56.1
 
+
 DHCP
 ----
 
@@ -126,6 +126,10 @@ Example::
   lowerip = 192.168.56.100
   upperip = 192.168.56.254
 
+The combination of ``vb-hostonlyif`` with ``vb-dhcpserver`` allows to configure a hostonly network with a deterministic IP address.
+In the above example you could configure an instance with a static IP address of ``192.168.56.99`` which would be addressable from the host.
+The important part is to chose an address that is *within* the DHCP server network but *outside* its DHCP pool, which is defined by ``lowerip`` and ``upperip`` respecitively.
+
 
 SSH
 ===
@@ -134,7 +138,7 @@ Depending on the setup we can't get the IP address or host name automatically.
 
 Unfortunately VirtualBox doesn't provide a way to see which instance got which IP address from it's own DHCP servers for example.
 
-If you know which host name or ip address your instance will have, then set the ``host`` or ``ip`` option.
+If you know which host name or ip address your instance will have, then set the ``host`` or ``ip`` option as explained above in the ``hostonly`` section.
 
 As a workaround you can also setup a NAT port forwarding like this::
 
@@ -142,6 +146,7 @@ As a workaround you can also setup a NAT port forwarding like this::
   vm-natpf2 = ssh,tcp,,47022,,22
 
 For this case ploy_virtualbox knows how to get the port and uses it for SSH access via localhost.
+
 
 If you install the VirtualBox guest additions in your instance, then the ``status`` command can show you the current IP address of the instance.
 
