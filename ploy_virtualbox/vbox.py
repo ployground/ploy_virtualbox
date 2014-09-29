@@ -1,4 +1,8 @@
 from lazy import lazy
+try:
+    from shlex import quote as shquote
+except ImportError:
+    from pipes import quote as shquote
 import logging
 import re
 import subprocess
@@ -34,8 +38,9 @@ def parse_list_result(sep, lines):
 
 
 class VBoxManage:
-    def __init__(self, executable="VBoxManage"):
+    def __init__(self, executable="VBoxManage", instance=None):
         self.executable = executable
+        self.instance = instance
 
     list_vms_re = re.compile(r"^\s*(['\"])(.*?)\1\s+{(.*?)}\s*$")
 
@@ -136,6 +141,26 @@ class VBoxManage:
             raise AttributeError(name)
         return lambda *args, **kw: self(name, *args, rc=0, err='', **kw)
 
+    def _local_call(self, cmd_args):
+        log.debug(cmd_args)
+        proc = subprocess.Popen(
+            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        _out, _err = proc.communicate()
+        _rc = proc.returncode
+        return _rc, _out, _err
+
+    def _remote_call(self, cmd_args):
+        cmd = ' '.join(shquote(x) for x in cmd_args)
+        log.debug(cmd)
+        chan = self.instance.conn.get_transport().open_session()
+        rout = chan.makefile('rb', -1)
+        rerr = chan.makefile_stderr('rb', -1)
+        chan.exec_command(cmd)
+        _out = rout.read()
+        _err = rerr.read()
+        _rc = chan.recv_exit_status()
+        return _rc, _out, _err
+
     def __call__(self, *args, **kw):
         rc = kw.pop('rc', None)
         out = kw.pop('out', None)
@@ -145,11 +170,10 @@ class VBoxManage:
         for k, v in sorted(kw.items()):
             cmd_args.append("--%s" % k)
             cmd_args.append(v)
-        log.debug(cmd_args)
-        proc = subprocess.Popen(
-            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        _out, _err = proc.communicate()
-        _rc = proc.returncode
+        if self.instance is None:
+            _rc, _out, _err = self._local_call(cmd_args)
+        else:
+            _rc, _out, _err = self._remote_call(cmd_args)
         result = []
         if rc is None:
             result.append(_rc)

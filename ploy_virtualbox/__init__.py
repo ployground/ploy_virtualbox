@@ -3,6 +3,7 @@ from ploy.common import BaseMaster, yesno
 from ploy.config import BooleanMassager, PathMassager
 from ploy.config import expand_path
 from ploy.plain import Instance as PlainInstance
+from ploy.proxy import ProxyInstance
 import logging
 import os
 import re
@@ -37,10 +38,9 @@ class Instance(PlainInstance):
     def _vmfolder(self):
         return os.path.join(self._vmbasefolder, self.id)
 
-    @lazy
+    @property
     def vb(self):
-        from ploy_virtualbox.vbox import VBoxManage
-        return VBoxManage()
+        return self.master.vb
 
     def _vminfo(self, group=None, namekey=None):
         info = self.vb.showvminfo(self.id)
@@ -126,6 +126,19 @@ class Instance(PlainInstance):
 
     def get_port(self):
         return self._get_forwarding_info().get('hostport', 22)
+
+    def init_ssh_key(self, user=None):
+        mi = getattr(self.master, 'instance', None)
+        if mi is not None and 'proxyhost' not in self.config:
+            self.config['proxyhost'] = self.master.id
+        if mi is not None and 'proxycommand' not in self.config:
+            master_ssh_info = mi.init_ssh_key()
+            master_ssh_args = mi.ssh_args_from_info(master_ssh_info)
+            ssh_args = ['nohup', 'ssh']
+            ssh_args.extend(master_ssh_args)
+            ssh_args.extend(['-W', '%s:%s' % (self.get_host(), self.get_port())])
+            self.config['proxycommand'] = ' '.join(ssh_args)
+        return PlainInstance.init_ssh_key(self, user=user)
 
     def status(self):
         vms = self.vb.list('vms')
@@ -492,10 +505,17 @@ class HostOnlyIFs(InfoBase):
 
 
 class Master(BaseMaster):
-    sectiongroupname = 'vb-master'
+    sectiongroupname = 'vb-instance'
     section_info = {
         None: Instance,
         'vb-instance': Instance}
+
+    def __init__(self, *args, **kwargs):
+        BaseMaster.__init__(self, *args, **kwargs)
+        if 'instance' in self.master_config:
+            self.instance = ProxyInstance(self, self.id, self.master_config, self.master_config['instance'])
+            self.instance.sectiongroupname = 'vb-master'
+            self.instances[self.id] = self.instance
 
     @lazy
     def dhcpservers(self):
@@ -508,6 +528,12 @@ class Master(BaseMaster):
     @lazy
     def hostonlyifs(self):
         return HostOnlyIFs(self)
+
+    @lazy
+    def vb(self):
+        from ploy_virtualbox.vbox import VBoxManage
+        instance = getattr(self, 'instance', None)
+        return VBoxManage(instance=instance)
 
 
 def get_instance_massagers(sectiongroupname='instance'):

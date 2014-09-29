@@ -32,6 +32,9 @@ The default master for ploy_virtualbox is ``virtualbox`` and has the following o
   This varies depending on the OS that ploy is running in.
   When not provided as absolute path, then it's relative to ``ploy.conf``.
 
+``instance``
+  Name of instance to use to execute VirtualBox commands instead of the default local machine.
+
 Example::
 
     [vb-master:virtualbox]
@@ -192,9 +195,11 @@ Example config
 Changelog
 =========
 
-1.0.1 - Unreleased
+1.1.0 - Unreleased
 ------------------
 
+* Added possibility to specify a remote instance to use for a virtualbox master.
+  [fschulze]
 
 
 1.0.0 - 2014-07-19
