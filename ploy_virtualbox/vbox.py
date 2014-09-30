@@ -1,8 +1,5 @@
 from lazy import lazy
-try:
-    from shlex import quote as shquote
-except ImportError:
-    from pipes import quote as shquote
+from ploy.common import shjoin
 import logging
 import re
 import subprocess
@@ -150,7 +147,7 @@ class VBoxManage:
         return _rc, _out, _err
 
     def _remote_call(self, cmd_args):
-        cmd = ' '.join(shquote(x) for x in cmd_args)
+        cmd = shjoin(cmd_args)
         log.debug(cmd)
         chan = self.instance.conn.get_transport().open_session()
         rout = chan.makefile('rb', -1)

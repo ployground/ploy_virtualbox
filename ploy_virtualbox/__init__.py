@@ -132,12 +132,7 @@ class Instance(PlainInstance):
         if mi is not None and 'proxyhost' not in self.config:
             self.config['proxyhost'] = self.master.id
         if mi is not None and 'proxycommand' not in self.config:
-            master_ssh_info = mi.init_ssh_key()
-            master_ssh_args = mi.ssh_args_from_info(master_ssh_info)
-            ssh_args = ['nohup', 'ssh']
-            ssh_args.extend(master_ssh_args)
-            ssh_args.extend(['-W', '%s:%s' % (self.get_host(), self.get_port())])
-            self.config['proxycommand'] = ' '.join(ssh_args)
+            self.config['proxycommand'] = self.proxycommand_with_instance(mi)
         return PlainInstance.init_ssh_key(self, user=user)
 
     def status(self):

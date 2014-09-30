@@ -198,6 +198,9 @@ Changelog
 1.1.0 - Unreleased
 ------------------
 
+* Use new helper in ploy 1.0.2 to setup proxycommand.
+  [fschulze]
+
 * Added possibility to specify a remote instance to use for a virtualbox master.
   [fschulze]
 
