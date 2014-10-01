@@ -272,7 +272,7 @@ class Instance(PlainInstance):
             try:
                 self.vb.modifyvm(self.id, *args)
             except subprocess.CalledProcessError as e:
-                log.error("Failed to modify VM '%s':\n%s" % (self.id, e))
+                log.error("Failed to modify VM '%s':\n%s\n%s" % (self.id, e, e.output))
                 sys.exit(1)
         # storagectl
         storagectls = self._vminfo(group='storagecontroller', namekey='name')

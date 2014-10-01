@@ -198,6 +198,9 @@ Changelog
 1.1.0 - Unreleased
 ------------------
 
+* Print error output of commands on failures.
+  [fschulze]
+
 * Use new helper in ploy 1.0.2 to setup proxycommand.
   [fschulze]
 
