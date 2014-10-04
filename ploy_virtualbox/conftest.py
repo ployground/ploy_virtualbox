@@ -1,1 +1,1 @@
-from ploy.tests.conftest import ployconf, tempdir  # noqa
+from ploy.tests.conftest import mock, ployconf, tempdir, yesno_mock  # noqa

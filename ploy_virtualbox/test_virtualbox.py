@@ -298,7 +298,7 @@ def test_start_stop_acpi_force(ctrl, popen_mock, tempdir, vbm_infos, monkeypatch
         "Instance stopped"]
 
 
-def test_start_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_terminate(ctrl, popen_mock, tempdir, vbm_infos, yesno_mock, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -318,6 +318,8 @@ def test_start_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'unregistervm', 'foo', '--delete'], 0, '', '')]
+    yesno_mock.expected = [
+        ("Are you sure you want to terminate 'vb-instance:foo'?", True)]
     ctrl(['./bin/ploy', 'start', 'foo'])
     ctrl(['./bin/ploy', 'terminate', 'foo'])
     assert popen_mock.expect == []
@@ -329,7 +331,7 @@ def test_start_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
         "Instance terminated"]
 
 
-def test_start_stop_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
+def test_start_stop_terminate(ctrl, popen_mock, tempdir, vbm_infos, yesno_mock, caplog):
     import uuid
     uid = str(uuid.uuid4())
     vminfo = VMInfo()
@@ -350,6 +352,8 @@ def test_start_stop_terminate(ctrl, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), ''),
         (['VBoxManage', 'unregistervm', 'foo', '--delete'], 0, '', '')]
+    yesno_mock.expected = [
+        ("Are you sure you want to terminate 'vb-instance:foo'?", True)]
     ctrl(['./bin/ploy', 'start', 'foo'])
     ctrl(['./bin/ploy', 'stop', 'foo'])
     ctrl(['./bin/ploy', 'terminate', 'foo'])
@@ -442,9 +446,11 @@ def test_stop(ctrl, popen_mock, caplog):
         "Instance 'foo' unavailable"]
 
 
-def test_terminate(ctrl, popen_mock, caplog):
+def test_terminate(ctrl, popen_mock, yesno_mock, caplog):
     popen_mock.expect = [
         (['VBoxManage', 'list', 'vms'], 0, '', '')]
+    yesno_mock.expected = [
+        ("Are you sure you want to terminate 'vb-instance:foo'?", True)]
     ctrl(['./bin/ploy', 'terminate', 'foo'])
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
