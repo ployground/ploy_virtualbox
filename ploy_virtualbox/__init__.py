@@ -333,7 +333,9 @@ class Instance(PlainInstance):
             except subprocess.CalledProcessError as e:
                 log.error("Failed to attach storage #%s to VM '%s':\n%s" % (index + 1, self.id, e))
                 sys.exit(1)
+        log.info("Starting instance '%s'" % self.config_id)
         self._start(config)
+        log.info("Instance started")
 
 
 class DHCPServer(object):

@@ -198,6 +198,9 @@ Changelog
 1.1.0 - Unreleased
 ------------------
 
+* Log info when starting an instance.
+  [fschulze]
+
 * Handle instances in ``aborted`` state.
   [fschulze]
 

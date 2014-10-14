@@ -102,7 +102,9 @@ def test_start(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     ctrl(['./bin/ploy', 'start', 'foo'])
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
-        "Creating instance 'foo'"]
+        "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started"]
 
 
 def test_start_status(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
@@ -132,6 +134,8 @@ def test_start_status(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "IP for hostonly interface: 192.168.56.3",
         "Instance running."]
 
@@ -159,6 +163,8 @@ def test_start_stop(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
         "Instance stopped"]
@@ -190,6 +196,8 @@ def test_start_stop_stop(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
         "Instance stopped",
@@ -223,6 +231,8 @@ def test_start_stop_status(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
         "Instance stopped",
@@ -255,6 +265,8 @@ def test_start_stop_acpi(ctrl, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Trying to stop instance with ACPI:",
         "Instance stopped"]
@@ -292,6 +304,8 @@ def test_start_stop_acpi_force(ctrl, popen_mock, tempdir, vbm_infos, monkeypatch
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Trying to stop instance with ACPI:",
         "Stopping instance by sending 'poweroff'.",
@@ -325,6 +339,8 @@ def test_start_terminate(ctrl, popen_mock, tempdir, vbm_infos, yesno_mock, caplo
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Waiting for instance to stop",
         "Terminating instance 'foo'",
@@ -360,6 +376,8 @@ def test_start_stop_terminate(ctrl, popen_mock, tempdir, vbm_infos, yesno_mock, 
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started",
         "Stopping instance 'foo'",
         "Stopping instance by sending 'poweroff'.",
         "Instance stopped",
@@ -395,7 +413,9 @@ def test_start_with_hdd(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
-        "Adding default 'sata' controller."]
+        "Adding default 'sata' controller.",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started"]
 
 
 def test_start_with_dvd(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
@@ -425,7 +445,9 @@ def test_start_with_dvd(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Creating instance 'foo'",
-        "Adding default 'sata' controller."]
+        "Adding default 'sata' controller.",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started"]
 
 
 def test_status(ctrl, popen_mock, caplog):
