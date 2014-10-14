@@ -198,6 +198,9 @@ Changelog
 1.1.0 - Unreleased
 ------------------
 
+* Handle instances in ``aborted`` state.
+  [fschulze]
+
 * Print error output of commands on failures.
   [fschulze]
 

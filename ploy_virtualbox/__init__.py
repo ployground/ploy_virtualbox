@@ -99,7 +99,10 @@ class Instance(PlainInstance):
             return 'stopped'
         elif status == 'saved':
             return 'saved'
-        raise VirtualBoxError("Don't know how to handle VM '%s' in state '%s'" % (self.id, status))
+        elif status == 'aborted':
+            log.warn("Instance '%s' is in state '%s'." % (self.config_id, status))
+            return 'aborted'
+        raise VirtualBoxError("Don't know how to handle VM '%s' in state '%s'" % (self.config_id, status))
 
     def get_massagers(self):
         return get_instance_massagers()
@@ -137,7 +140,11 @@ class Instance(PlainInstance):
 
     def status(self):
         vms = self.vb.list('vms')
-        status = self._status(vms)
+        try:
+            status = self._status(vms)
+        except VirtualBoxError as e:
+            log.error(e)
+            return
         if status == 'unavailable':
             log.info("Instance '%s' unavailable", self.id)
             return
@@ -195,7 +202,7 @@ class Instance(PlainInstance):
         if status == 'running':
             log.info("Stopping instance '%s'", self.id)
             self.vb.controlvm(self.id, 'poweroff')
-        if status not in ('stopped', 'saved'):
+        if status not in ('stopped', 'saved', 'aborted'):
             log.info('Waiting for instance to stop')
             while status != 'stopped':
                 status = self._status()
@@ -259,7 +266,7 @@ class Instance(PlainInstance):
                 log.error("Failed to create VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
             status = self._status()
-        if status not in ('stopped', 'saved'):
+        if status not in ('stopped', 'saved', 'aborted'):
             log.info("Instance state: %s", status)
             log.info("Instance already started")
             return True
