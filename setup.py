@@ -4,6 +4,7 @@ import os
 
 here = os.path.abspath(os.path.dirname(__file__))
 README = open(os.path.join(here, 'README.rst')).read()
+HISTORY = open(os.path.join(here, 'HISTORY.rst')).read()
 
 
 version = "1.1.0dev"
@@ -12,7 +13,7 @@ version = "1.1.0dev"
 setup(
     version=version,
     description="Plugin for ploy to provision virtual machines using VirtualBox.",
-    long_description=README + "\n\n",
+    long_description=README + "\n\n" + HISTORY,
     name="ploy_virtualbox",
     author='Florian Schulze',
     author_email='florian.schulze@gmx.net',
