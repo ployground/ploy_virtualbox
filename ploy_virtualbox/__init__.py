@@ -4,7 +4,10 @@ from ploy.config import BooleanMassager, PathMassager
 from ploy.config import expand_path
 from ploy.plain import Instance as PlainInstance
 from ploy.proxy import ProxyInstance
-from urlparse import urlparse
+try:
+    from urlparse import urlparse
+except ImportError:
+    from urllib.parse import urlparse
 import hashlib
 import logging
 import os
