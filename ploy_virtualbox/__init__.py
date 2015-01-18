@@ -4,6 +4,8 @@ from ploy.config import BooleanMassager, PathMassager
 from ploy.config import expand_path
 from ploy.plain import Instance as PlainInstance
 from ploy.proxy import ProxyInstance
+from urlparse import urlparse
+import hashlib
 import logging
 import os
 import re
@@ -11,7 +13,7 @@ import subprocess
 import shlex
 import sys
 import time
-
+import urllib
 
 log = logging.getLogger('ploy_virtualbox')
 
@@ -313,7 +315,10 @@ class Instance(PlainInstance):
                 args_dict[k[2:]] = v
             if 'medium' in args_dict:
                 medium = args_dict['medium']
-                if '.' in medium:
+                medium_url = urlparse(medium)
+                if medium_url.netloc:
+                    medium = self.download_remote(medium_url, args_dict.pop('medium_sha1', None))
+                elif '.' in medium:
                     medium = expand_path(medium, config.get_path('storage'))
                 elif medium.startswith('vb-disk:'):
                     medium = self.master.disks[medium[8:]].filename(self)
@@ -336,6 +341,46 @@ class Instance(PlainInstance):
         log.info("Starting instance '%s'" % self.config_id)
         self._start(config)
         log.info("Instance started")
+
+    def download_remote(self, url, sha_checksum=None):
+
+        def check(path, sha):
+            d = hashlib.sha1()
+            with open(path, 'rb') as f:
+                while 1:
+                    buf = f.read(1024 * 1024)
+                    if not len(buf):
+                        break
+                    d.update(buf)
+            return d.hexdigest() == sha
+
+        download_dir = os.path.expanduser(self.master.main_config['global'].get(
+            'download_dir', '~/.ploy/downloads'))
+
+        if not os.path.exists(download_dir):
+            os.makedirs(download_dir, mode=0750)
+
+        path, filename = os.path.split(url.path)
+        local_path = os.path.join(download_dir, filename)
+
+        if sha_checksum is None:
+            log.warn('No checksum provided! Are you sure you want to boot from an unverified image?')
+
+        if os.path.exists(local_path):
+            if sha_checksum is None or check(local_path, sha_checksum):
+                return local_path
+            else:
+                log.error('Checksum mismatch for %s!' % local_path)
+                sys.exit(1)
+
+        log.info("Downloading remote disk image from %s" % url.geturl())
+        urllib.urlretrieve(url.geturl(), local_path)
+        log.info('Downloaded successfully to %s' % local_path)
+        if sha_checksum is not None and not check(local_path, sha_checksum):
+            log.error('Checksum mismatch!')
+            sys.exit(1)
+
+        return local_path
 
 
 class DHCPServer(object):
