@@ -358,7 +358,7 @@ class Instance(PlainInstance):
             'download_dir', '~/.ploy/downloads'))
 
         if not os.path.exists(download_dir):
-            os.makedirs(download_dir, mode=0750)
+            os.makedirs(download_dir, mode=0o750)
 
         path, filename = os.path.split(url.path)
         local_path = os.path.join(download_dir, filename)
