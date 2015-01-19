@@ -357,7 +357,7 @@ class Instance(PlainInstance):
                     d.update(buf)
             return d.hexdigest() == sha
 
-        download_dir = os.path.expanduser(self.master.main_config['global'].get(
+        download_dir = os.path.expanduser(self.master.main_config.get('global', dict()).get(
             'download_dir', '~/.ploy/downloads'))
 
         if not os.path.exists(download_dir):
