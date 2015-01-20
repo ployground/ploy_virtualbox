@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.0 - Unreleased
+1.1.0 - 2015-01-20
 ------------------
 
 * Log info when starting an instance.
