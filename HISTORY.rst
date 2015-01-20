@@ -19,6 +19,9 @@ Changelog
 * Added possibility to specify a remote instance to use for a virtualbox master.
   [fschulze]
 
+* Added ability to reference disk images via external URL for virtualbox instances storage.
+  [tomster]
+
 
 1.0.0 - 2014-07-19
 ------------------

@@ -74,12 +74,25 @@ The following options are handled differently or have some convenience added:
 
   If you don't set ``--storagectl`` then ``sata`` is used as default and if that controller doesn't exist it's created automatically.
 
-  For ``medium`` there is an additional option ``vb-disk:NAME`` which refers to a `Disk section`_ called ``NAME``.
+  If ``medium`` references a local file that path will be passed directly to ``VBoxManage storageattach``.
 
-  Example::
+  If it takes the form ``vb-disk:NAME`` which refers to a `Disk section`_ called ``NAME`` that will be used instead.
+
+  If it takes the form of an URL, the filename of that URL is assumed to be located at ``~/.ploy/downloads/`` (this default can be overridden in the ``[global]`` section of the configuration file with an entry ``download_dir``).
+  If the file does not exist it will be downloaded.
+
+  When using the URL notation it is strongly encouraged to also provide a checksum using the ``--medium_sha1`` key (currently only SHA1 is supported).
+
+  Example for using a local ISO image as DVD drive::
 
       storage =
           --type dvddrive --medium ~/downloads/archives/mfsbsd-se-9.2-RELEASE-amd64.iso
+          --medium vb-disk:boot
+
+  Example for referencing an external URL::
+
+      storage =
+          --type dvddrive --medium http://mfsbsd.vx.sk/files/iso/10/amd64/mfsbsd-se-10.1-RELEASE-amd64.iso --medium_sha1 03af247c1058a78a251c46ad5a13dc7b84a7ee7d
           --medium vb-disk:boot
 
 ``hostonlyadapter``
