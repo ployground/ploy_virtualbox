@@ -367,7 +367,8 @@ class Instance(PlainInstance):
         local_path = os.path.join(download_dir, filename)
 
         if sha_checksum is None:
-            log.warn('No checksum provided! Are you sure you want to boot from an unverified image?')
+            if not yesno('No checksum provided! Are you sure you want to boot from an unverified image?'):
+                sys.exit(1)
 
         if os.path.exists(local_path):
             if sha_checksum is None or check(local_path, sha_checksum):
