@@ -376,7 +376,7 @@ class Instance(PlainInstance):
                 log.error('Checksum mismatch for %s!' % local_path)
                 sys.exit(1)
 
-        log.info("Downloading remote disk image from %s" % url.geturl())
+        log.info("Downloading remote disk image from %s to %s" % (url.geturl(), local_path))
         urllib.urlretrieve(url.geturl(), local_path)
         log.info('Downloaded successfully to %s' % local_path)
         if sha_checksum is not None and not check(local_path, sha_checksum):
