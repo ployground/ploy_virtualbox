@@ -1,8 +1,7 @@
 from lazy import lazy
-from ploy.common import shjoin
+from ploy.common import Executor
 import logging
 import re
-import subprocess
 
 
 log = logging.getLogger('ploy_virtualbox.vbox')
@@ -36,8 +35,8 @@ def parse_list_result(sep, lines):
 
 class VBoxManage:
     def __init__(self, executable="VBoxManage", instance=None):
-        self.executable = executable
-        self.instance = instance
+        self.executor = Executor(
+            instance=instance, prefix_args=[executable], splitlines=True)
 
     list_vms_re = re.compile(r"^\s*(['\"])(.*?)\1\s+{(.*?)}\s*$")
 
@@ -138,66 +137,13 @@ class VBoxManage:
             raise AttributeError(name)
         return lambda *args, **kw: self(name, *args, rc=0, err='', **kw)
 
-    def _local_call(self, cmd_args):
-        log.debug(cmd_args)
-        proc = subprocess.Popen(
-            cmd_args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        _out, _err = proc.communicate()
-        _rc = proc.returncode
-        return _rc, _out, _err
-
-    def _remote_call(self, cmd_args):
-        cmd = shjoin(cmd_args)
-        log.debug(cmd)
-        chan = self.instance.conn.get_transport().open_session()
-        rout = chan.makefile('rb', -1)
-        rerr = chan.makefile_stderr('rb', -1)
-        chan.exec_command(cmd)
-        _out = rout.read()
-        _err = rerr.read()
-        _rc = chan.recv_exit_status()
-        return _rc, _out, _err
-
     def __call__(self, *args, **kw):
         rc = kw.pop('rc', None)
         out = kw.pop('out', None)
         err = kw.pop('err', None)
-        cmd_args = [self.executable]
+        cmd_args = []
         cmd_args.extend(args)
         for k, v in sorted(kw.items()):
             cmd_args.append("--%s" % k)
             cmd_args.append(v)
-        if self.instance is None:
-            _rc, _out, _err = self._local_call(cmd_args)
-        else:
-            _rc, _out, _err = self._remote_call(cmd_args)
-        result = []
-        if rc is None:
-            result.append(_rc)
-        else:
-            try:
-                if not any(x == _rc for x in rc):
-                    raise subprocess.CalledProcessError(_rc, ' '.join(cmd_args), _err)
-            except TypeError:
-                pass
-            if rc != _rc:
-                raise subprocess.CalledProcessError(_rc, ' '.join(cmd_args), _err)
-        if out is None:
-            result.append(_out.splitlines())
-        else:
-            if out != _out:
-                if _rc == 0:
-                    log.error(_out)
-                raise subprocess.CalledProcessError(_rc, ' '.join(cmd_args), _err)
-        if err is None:
-            result.append(_err.splitlines())
-        else:
-            if err != _err:
-                if _rc == 0:
-                    log.error(_err)
-                raise subprocess.CalledProcessError(_rc, ' '.join(cmd_args), _err)
-        if len(result) == 0:
-            return
-        elif len(result) == 1:
-            return result[0]
-        return tuple(result)
+        return self.executor(*cmd_args, rc=rc, out=out, err=err)

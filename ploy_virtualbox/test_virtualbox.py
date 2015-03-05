@@ -16,9 +16,9 @@ def vbm_infos(tempdir):
 def popen_mock(monkeypatch):
     class Popen:
         def __init__(self, cmd_args, **kw):
-            self.cmd_args = cmd_args
+            self.cmd_args = list(cmd_args)
 
-        def communicate(self):
+        def communicate(self, input=None):
             try:
                 expected = self.expect.pop(0)
             except IndexError:  # pragma: no cover - only on failures
