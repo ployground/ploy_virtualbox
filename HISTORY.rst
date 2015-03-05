@@ -4,6 +4,9 @@ Changelog
 1.1.1 - Unreleased
 ------------------
 
+* Ask user whether to continue or not when checksum of downloaded iso image
+  doesn't match.
+  [tomster]
 
 
 1.1.0 - 2015-01-20
