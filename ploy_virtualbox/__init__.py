@@ -215,6 +215,26 @@ class Instance(PlainInstance):
                 sys.stdout.flush()
                 time.sleep(1)
             print
+        for index, args_dict in enumerate(self._get_storages(self.config)):
+            if 'medium' in args_dict:
+                medium = args_dict['medium']
+                if isinstance(medium, Disk):
+                    if not medium.delete:
+                        storagectls = self._vminfo(group='storagecontroller', namekey='name')
+                        if 'storagectl' not in args_dict:
+                            if len(storagectls) == 1:
+                                args_dict['storagectl'] = list(storagectls.keys())[0]
+                            else:
+                                log.error("You have to select the controller for storage '%s' on VM '%s'." % (index, self.id))
+                                sys.exit(1)
+                        if 'port' not in args_dict:
+                            args_dict['port'] = str(index)
+                        args_dict['medium'] = 'none'
+                        try:
+                            self.vb.storageattach(self.id, **args_dict)
+                        except subprocess.CalledProcessError as e:
+                            log.error("Failed to deattach storage #%s from VM '%s':\n%s" % (index + 1, self.id, e))
+                            sys.exit(1)
         log.info("Terminating instance '%s'", self.id)
         self.vb.unregistervm(self.id, '--delete')
         log.info("Instance terminated")
@@ -255,6 +275,33 @@ class Instance(PlainInstance):
         except subprocess.CalledProcessError as e:
             log.error("Failed to start VM '%s':\n%s" % (self.id, e))
             sys.exit(1)
+
+    def _get_storages(self, config):
+        storages = list(filter(None, config.get('storage', '').splitlines()))
+        result = []
+        for storage in storages:
+            args = shlex.split(storage)
+            args_dict = {}
+            for k, v in zip(*[iter(args)] * 2):
+                args_dict[k[2:]] = v
+            if 'medium' in args_dict:
+                medium = args_dict['medium']
+                medium_url = urlparse(medium)
+                if medium_url.netloc:
+                    medium = (medium_url, args_dict.pop('medium_sha1', None))
+                elif '.' in medium:
+                    medium = expand_path(medium, config.get_path('storage'))
+                elif medium.startswith('vb-disk:'):
+                    try:
+                        medium = self.master.disks[medium[8:]]
+                    except KeyError:
+                        log.error("Couldn't find [vb-disk:%s] section referenced by [%s]." % (medium[8:], self.config_id))
+                        sys.exit(1)
+                args_dict['medium'] = medium
+            if 'type' not in args_dict:
+                args_dict['type'] = 'hdd'
+            result.append(args_dict)
+        return result
 
     def start(self, overrides=None):
         config = self.get_config(overrides)
@@ -302,7 +349,7 @@ class Instance(PlainInstance):
                 sys.exit(1)
         storagectls = self._vminfo(group='storagecontroller', namekey='name')
         # storageattach
-        storages = list(filter(None, config.get('storage', '').splitlines()))
+        storages = self._get_storages(config)
         if storages and not storagectls:
             log.info("Adding default 'sata' controller.")
             try:
@@ -311,20 +358,13 @@ class Instance(PlainInstance):
                 log.error("Failed to create default storage controller for VM '%s':\n%s" % (self.id, e))
                 sys.exit(1)
             storagectls = self._vminfo(group='storagecontroller', namekey='name')
-        for index, storage in enumerate(storages):
-            args = shlex.split(storage)
-            args_dict = {}
-            for k, v in zip(*[iter(args)] * 2):
-                args_dict[k[2:]] = v
+        for index, args_dict in enumerate(storages):
             if 'medium' in args_dict:
                 medium = args_dict['medium']
-                medium_url = urlparse(medium)
-                if medium_url.netloc:
-                    medium = self.download_remote(medium_url, args_dict.pop('medium_sha1', None))
-                elif '.' in medium:
-                    medium = expand_path(medium, config.get_path('storage'))
-                elif medium.startswith('vb-disk:'):
-                    medium = self.master.disks[medium[8:]].filename(self)
+                if isinstance(medium, tuple):
+                    medium = self.download_remote(*medium)
+                elif isinstance(medium, Disk):
+                    medium = medium.filename(self)
                 args_dict['medium'] = medium
             if 'storagectl' not in args_dict:
                 if len(storagectls) == 1:
@@ -332,8 +372,6 @@ class Instance(PlainInstance):
                 else:
                     log.error("You have to select the controller for storage '%s' on VM '%s'." % (index, self.id))
                     sys.exit(1)
-            if 'type' not in args_dict:
-                args_dict['type'] = 'hdd'
             if 'port' not in args_dict:
                 args_dict['port'] = str(index)
             try:
@@ -465,6 +503,10 @@ class Disk(object):
                 log.error("Failed to create disk '%s' at '%s':\n%s" % (self.name, filename, e))
                 sys.exit(1)
         return filename
+
+    @property
+    def delete(self):
+        return self.config.get('delete', True)
 
     @property
     def format(self):
@@ -602,6 +644,10 @@ def get_instance_massagers(sectiongroupname='instance'):
 
 def get_massagers():
     massagers = []
+
+    sectiongroupname = 'vb-disk'
+    massagers.extend([
+        BooleanMassager(sectiongroupname, 'delete')])
 
     sectiongroupname = 'vb-master'
     massagers.extend([

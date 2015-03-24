@@ -110,6 +110,9 @@ You can set the ``size``, ``variant`` and ``format`` options as described in the
 The ``filename`` option allows you to set a filename for the disk, the extension is automatically added based on the ``format`` option.
 If you use a relative path, then it's base is the ``basefolder`` setting of the instance.
 
+When the ``delete`` option is set to ``false``, the disk is not deleted when the instance using it is terminated.
+The default is to delete the disk upon instance termination.
+
 Example::
 
   [vb-disk:boot]

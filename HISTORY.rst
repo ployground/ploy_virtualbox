@@ -4,6 +4,10 @@ Changelog
 1.1.1 - Unreleased
 ------------------
 
+* Add ``delete`` option to disks. If set to ``false``, the disk is kept in
+  place upon instance termination and not deleted as per default.
+  [fschulze]
+
 * Ask user whether to continue or not when checksum of downloaded iso image
   doesn't match.
   [tomster]
