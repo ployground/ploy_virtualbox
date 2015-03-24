@@ -104,8 +104,11 @@ Disk sections
 =============
 
 These section allow you to describe how disks should be created.
-You can set the ``size`` and ``variant`` options.
-See ``VBoxManage createhd`` documentation for details.
+
+You can set the ``size``, ``variant`` and ``format`` options as described in the ``VBoxManage createhd`` documentation.
+
+The ``filename`` option allows you to set a filename for the disk, the extension is automatically added based on the ``format`` option.
+If you use a relative path, then it's base is the ``basefolder`` setting of the instance.
 
 Example::
 

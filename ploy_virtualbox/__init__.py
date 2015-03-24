@@ -448,7 +448,10 @@ class Disk(object):
     def filename(self, instance):
         filename = self.config.get('filename')
         if filename is None:
-            filename = "%s.%s" % (self.name, self.format.lower())
+            filename = self.name
+        ext = ".%s" % self.format.lower()
+        if not filename.endswith(ext):
+            filename = filename + ext
         filename = expand_path(filename, instance._vmfolder)
         if not os.path.exists(filename):
             kw = {}
