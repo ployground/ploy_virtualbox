@@ -1,7 +1,7 @@
 Changelog
 =========
 
-1.1.1 - Unreleased
+1.2.0 - 2015-09-03
 ------------------
 
 * Add ``delete`` option to disks. If set to ``false``, the disk is kept in
