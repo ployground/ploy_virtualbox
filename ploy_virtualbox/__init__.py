@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from lazy import lazy
 from ploy.common import BaseMaster, yesno
 from ploy.config import BooleanMassager, PathMassager

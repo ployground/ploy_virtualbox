@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 import logging
 import os
 import pytest
@@ -67,19 +68,19 @@ class VMInfo:
 
     def nic(self, nictype):
         d = dict()
-        d['nic%d' % self._nic] = repr(nictype)
+        d['nic%d' % self._nic] = "'%s'" % nictype
         self._info_updates.append(d)
         self._nic += 1
         return self
 
     def state(self, state):
-        self._info_updates.append(dict(VMState=repr(state)))
+        self._info_updates.append(dict(VMState="'%s'" % state))
         return self
 
     def storagectl(self, **kw):
         d = dict()
         for k, v in kw.items():
-            d['storagecontroller%s%d' % (k, self._storagectl)] = repr(v)
+            d['storagecontroller%s%d' % (k, self._storagectl)] = "'%s'" % v
         self._info_updates.append(d)
         self._storagectl += 1
         return self
