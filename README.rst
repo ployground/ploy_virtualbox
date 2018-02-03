@@ -92,7 +92,7 @@ The following options are handled differently or have some convenience added:
   Example for referencing an external URL::
 
       storage =
-          --type dvddrive --medium http://mfsbsd.vx.sk/files/iso/10/amd64/mfsbsd-se-10.1-RELEASE-amd64.iso --medium_sha1 03af247c1058a78a251c46ad5a13dc7b84a7ee7d
+          --type dvddrive --medium http://mfsbsd.vx.sk/files/iso/11/amd64/mfsbsd-se-11.1-RELEASE-amd64.iso --medium_sha1 2fd80caf57c29d62859bccfa3b8ec7b5b244406e
           --medium vb-disk:boot
 
 ``hostonlyadapter``
