@@ -98,7 +98,7 @@ class Instance(PlainInstance):
                 else:
                     log.error("Couldn't get status of '%s':\n%s" % (self.config_id, e))
                     sys.exit(1)
-        if status == 'running':
+        if status in ('running', 'stopping'):
             return 'running'
         elif status == 'poweroff':
             return 'stopped'

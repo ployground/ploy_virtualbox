@@ -259,6 +259,8 @@ def test_start_stop_acpi(ctrl, popen_mock, tempdir, vbm_infos, caplog):
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), ''),
         (['VBoxManage', 'controlvm', 'foo', 'acpipowerbutton'], 0, '', ''),
         (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
+        (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('stopping'), ''),
+        (['VBoxManage', 'list', 'vms'], 0, '"foo" {%s}' % uid, ''),
         (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), '')]
     ctrl(['./bin/ploy', 'start', 'foo'])
     ctrl(['./bin/ploy', 'stop', 'foo'])
