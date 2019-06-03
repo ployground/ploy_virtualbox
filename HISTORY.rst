@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0bb - Unreleased
+--------------------
+
+* Drop support for Python 3.4.
+  [fschulze]
+
+
 2.0.0b1 - 2018-02-07
 --------------------
 
