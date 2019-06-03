@@ -53,7 +53,7 @@ class Instance(PlainInstance):
         if group is None:
             return info
         result = {}
-        matcher = re.compile('%s(\D*)(\d+)' % group)
+        matcher = re.compile(r'%s(\D*)(\d+)' % group)
         for key, value in info.items():
             m = matcher.match(key)
             if m:
