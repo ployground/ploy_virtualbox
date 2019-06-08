@@ -55,7 +55,7 @@ class VBoxManage:
     guestproperty_re = re.compile('Name: (.*), value: (.*), timestamp: (.*), flags: (.*)')
 
     def guestproperty(self, name, *args, **kw):
-        lines = self('guestproperty', name, *args, rc=0, err='', **kw)
+        lines = self('guestproperty', name, *args, rc=0, err=b'', **kw)
         result = dict()
         matches = iter_matches(self.guestproperty_re, lines)
         for name, value, timestamp, flags in matches:
@@ -76,7 +76,7 @@ class VBoxManage:
         return self('list', cmd, *args, **kw)
 
     def list_dhcpservers(self, *args, **kw):
-        lines = self('list', 'dhcpservers', *args, rc=0, err='', **kw)
+        lines = self('list', 'dhcpservers', *args, rc=0, err=b'', **kw)
         block = []
         result = {}
         for line in lines:
@@ -89,7 +89,7 @@ class VBoxManage:
         return result
 
     def list_hostonlyifs(self, *args, **kw):
-        lines = self('list', 'hostonlyifs', *args, rc=0, err='', **kw)
+        lines = self('list', 'hostonlyifs', *args, rc=0, err=b'', **kw)
         block = []
         result = {}
         for line in lines:
@@ -102,15 +102,15 @@ class VBoxManage:
         return result
 
     def list_systemproperties(self, *args, **kw):
-        lines = self('list', 'systemproperties', *args, rc=0, err='', **kw)
+        lines = self('list', 'systemproperties', *args, rc=0, err=b'', **kw)
         return parse_list_result(':', lines)
 
     def list_vms(self, *args, **kw):
-        lines = self('list', 'vms', *args, rc=0, err='', **kw)
+        lines = self('list', 'vms', *args, rc=0, err=b'', **kw)
         return dict((x[1], x[2]) for x in iter_matches(self.list_vms_re, lines))
 
     def showvminfo(self, *args, **kw):
-        lines = self('showvminfo', '--machinereadable', *args, rc=0, err='', **kw)
+        lines = self('showvminfo', '--machinereadable', *args, rc=0, err=b'', **kw)
         return parse_list_result('=', lines)
 
     def unregistervm(self, name, *args, **kw):
@@ -118,9 +118,9 @@ class VBoxManage:
 
     @lazy
     def commands(self):
-        lines = iter(x for x in self(rc=0, err='') if x.strip())
+        lines = iter(x for x in self(rc=0, err=b'') if x.strip())
         for line in lines:
-            if line.startswith(b'Commands:'):
+            if line.startswith('Commands:'):
                 break
         result = set()
         count = 0
@@ -128,14 +128,14 @@ class VBoxManage:
             if line[:4].strip():
                 count = 0
             if not count:
-                result.add(line[:28].strip().split(None, 1)[0].decode('ascii'))
+                result.add(line[:28].strip().split(None, 1)[0])
             count += 1
         return sorted(result)
 
     def __getattr__(self, name):
         if name not in self.commands:
             raise AttributeError(name)
-        return lambda *args, **kw: self(name, *args, rc=0, err='', **kw)
+        return lambda *args, **kw: self(name, *args, rc=0, err=b'', **kw)
 
     def __call__(self, *args, **kw):
         rc = kw.pop('rc', None)
