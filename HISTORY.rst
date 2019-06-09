@@ -1,8 +1,11 @@
 Changelog
 =========
 
-2.0.0bb - Unreleased
+2.0.0b2 - 2019-06-09
 --------------------
+
+* Fix tests for Python 3.x after ploy 2.0.0b3 release.
+  [fschulze]
 
 * Drop support for Python 3.4.
   [fschulze]
