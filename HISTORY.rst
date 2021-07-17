@@ -1,6 +1,13 @@
 Changelog
 =========
 
+2.0.0b3 - Unreleased
+--------------------
+
+* Fix dhcpserver setup for newer VirtualBox versions.
+  [fschulze]
+
+
 2.0.0b2 - 2019-06-09
 --------------------
 

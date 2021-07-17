@@ -82,6 +82,8 @@ class VBoxManage:
         for line in lines:
             if not line:
                 info = parse_list_result(':', block)
+                if 'Dhcpd IP' in info and 'IP' not in info:
+                    info['IP'] = info['Dhcpd IP']
                 result[info['NetworkName']] = info
                 block = []
             else:
@@ -118,23 +120,30 @@ class VBoxManage:
 
     @lazy
     def commands(self):
-        lines = iter(x for x in self(rc=0, err=b'') if x.strip())
-        for line in lines:
+        lines = [x for x in self(rc=0, err=b'') if x.strip()]
+        lines_iter = iter(lines)
+        for line in lines_iter:
             if line.startswith('Commands:'):
                 break
         result = set()
         count = 0
-        for line in lines:
+        for line in lines_iter:
+            if line.endswith(':'):
+                continue
             if line[:4].strip():
                 count = 0
             if not count:
-                result.add(line[:28].strip().split(None, 1)[0])
+                cmd = line.strip()
+                if cmd.startswith('VBoxManage'):
+                    cmd = cmd[len('VBoxManage'):].strip()
+                cmd = cmd.split(None, 1)[0]
+                result.add(cmd)
             count += 1
         return sorted(result)
 
     def __getattr__(self, name):
         if name not in self.commands:
-            raise AttributeError(name)
+            raise AttributeError(name, self.commands)
         return lambda *args, **kw: self(name, *args, rc=0, err=b'', **kw)
 
     def __call__(self, *args, **kw):

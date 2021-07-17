@@ -4,14 +4,14 @@ import os
 import pytest
 
 
-@pytest.yield_fixture
-def vbm_infos(tempdir):
+@pytest.yield_fixture(params=['vboxmanage4.txt', 'vboxmanage6.txt'])
+def vbm_infos(request, tempdir):
     import pkg_resources
     path = tempdir.directory.encode('ascii')
     yield dict(
         systemproperties=b'Default machine folder:          %s' % path,
         usage=pkg_resources.resource_string(
-            'ploy_virtualbox', 'vboxmanage.txt'))
+            'ploy_virtualbox', request.param))
 
 
 @pytest.yield_fixture
@@ -484,3 +484,80 @@ def test_terminate(ctrl, popen_mock, yesno_mock, caplog):
     assert popen_mock.expect == []
     assert caplog_messages(caplog) == [
         "Instance 'foo' unavailable"]
+
+
+def test_dhcpserver(ctrl, ployconf, popen_mock, tempdir, vbm_infos, caplog):
+    import uuid
+    uid = str(uuid.uuid4()).encode('ascii')
+    hoifuid = str(uuid.uuid4()).encode('ascii')
+    ployconf.fill([
+        '[vb-dhcpserver:vboxnet0]',
+        'ip = 192.168.56.2',
+        'netmask = 255.255.255.0',
+        'lowerip = 192.168.56.100',
+        'upperip = 192.168.56.254',
+        '[vb-hostonlyif:vboxnet0]',
+        'ip = 192.168.56.1',
+        '[vb-instance:foo]',
+        'vm-nic1 = hostonly',
+        'vm-hostonlyadapter1 = vboxnet0'])
+    vminfo = VMInfo()
+    hostonlyif = b"\n".join([
+        b"Name:            vboxnet0",
+        b"GUID:            %s" % hoifuid,
+        b"DHCP:            Disabled",
+        b"IPAddress:       192.168.56.1",
+        b"NetworkMask:     255.255.255.0",
+        b"IPV6Address:     ",
+        b"IPV6NetworkMaskPrefixLength: 0",
+        b"HardwareAddress: 0a:00:27:00:00:00",
+        b"MediumType:      Ethernet",
+        b"Wireless:        No",
+        b"Status:          Down",
+        b"VBoxNetworkName: HostInterfaceNetworking-vboxnet0",
+        b"",
+        b""])
+    dhcpservers = b"\n".join([
+        b"NetworkName:    HostInterfaceNetworking-vboxnet0",
+        b"Dhcpd IP:       192.168.56.2",
+        b"LowerIPAddress: 192.168.56.100",
+        b"UpperIPAddress: 192.168.56.254",
+        b"NetworkMask:    255.255.255.0",
+        b"Enabled:        Yes",
+        b"Global Configuration:",
+        b"    minLeaseTime:     default",
+        b"    defaultLeaseTime: default",
+        b"    maxLeaseTime:     default",
+        b"    Forced options:   None",
+        b"    Suppressed opts.: None",
+        b"        1/legacy: 255.255.255.0",
+        b"Groups:               None",
+        b"Individual Configs:   None",
+        b"",
+        b""])
+    popen_mock.expect = [
+        (['VBoxManage', 'list', 'vms'], 0, b'', b''),
+        (['VBoxManage'], 0, vbm_infos['usage'], b''),
+        (['VBoxManage', 'list', 'systemproperties'], 0, vbm_infos['systemproperties'], b''),
+        (['VBoxManage', 'createvm', '--name', 'foo', '--basefolder', tempdir.directory, '--ostype', 'Other', '--register'], 0, b'', b''),
+        (['VBoxManage', 'list', 'vms'], 0, b'"foo" {%s}' % uid, b''),
+        (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.state('poweroff'), b''),
+        (['VBoxManage', 'list', 'hostonlyifs'], 0, b'', b''),
+        (['VBoxManage', 'hostonlyif', 'create'], 0, b'', b''),
+        (['VBoxManage', 'list', 'hostonlyifs'], 0, hostonlyif, b''),
+        (['VBoxManage', 'hostonlyif', 'ipconfig', 'vboxnet0', '--ip', '192.168.56.1'], 0, hostonlyif, b''),
+        (['VBoxManage', 'list', 'dhcpservers'], 0, b'', b''),
+        (['VBoxManage', 'dhcpserver', 'add', '--enable', '--ip', '192.168.56.2', '--lowerip', '192.168.56.100', '--netmask', '255.255.255.0', '--netname', 'HostInterfaceNetworking-vboxnet0', '--upperip', '192.168.56.254'], 0, b'', b''),
+        (['VBoxManage', 'list', 'dhcpservers'], 0, dhcpservers, b''),
+        (['VBoxManage', 'modifyvm', 'foo', '--hostonlyadapter1', 'vboxnet0', '--nic1', 'hostonly'], 0, b'', b''),
+        (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo.nic('hostonly'), b''),
+        (['VBoxManage', 'showvminfo', '--machinereadable', 'foo'], 0, vminfo(), b''),
+        (['VBoxManage', 'startvm', 'foo'], 0, b'', b'')]
+    ctrl(['./bin/ploy', 'start', 'foo'])
+    assert popen_mock.expect == []
+    assert caplog_messages(caplog) == [
+        "Creating instance 'foo'",
+        "Created host only interface 'vboxnet0'.",
+        "Added dhcpserver 'vboxnet0'.",
+        "Starting instance 'vb-instance:foo'",
+        "Instance started"]
