@@ -1,7 +1,7 @@
 Changelog
 =========
 
-2.0.0b3 - Unreleased
+2.0.0b3 - 2021-07-17
 --------------------
 
 * Fix dhcpserver setup for newer VirtualBox versions.
