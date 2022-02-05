@@ -1,5 +1,6 @@
 from lazy import lazy
-from ploy.common import Executor
+from ploy.common import InstanceExecutor
+from ploy.common import LocalExecutor
 import logging
 import re
 
@@ -35,8 +36,12 @@ def parse_list_result(sep, lines):
 
 class VBoxManage:
     def __init__(self, executable="VBoxManage", instance=None):
-        self.executor = Executor(
-            instance=instance, prefix_args=[executable], splitlines=True)
+        if instance is None:
+            self.executor = LocalExecutor(
+                prefix_args=[executable], splitlines=True)
+        else:
+            self.executor = InstanceExecutor(
+                instance=instance, prefix_args=[executable], splitlines=True)
 
     list_vms_re = re.compile(r"^\s*(['\"])(.*?)\1\s+{(.*?)}\s*$")
 
