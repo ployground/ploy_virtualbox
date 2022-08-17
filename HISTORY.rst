@@ -1,6 +1,16 @@
 Changelog
 =========
 
+2.0.0b4 - Unreleased
+--------------------
+
+* Dropped support for Python 3.6.
+  [fschulze]
+
+* Added support for Python 3.10.
+  [fschulze]
+
+
 2.0.0b3 - 2021-07-17
 --------------------
 
