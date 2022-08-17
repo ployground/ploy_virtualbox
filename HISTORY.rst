@@ -1,9 +1,38 @@
 Changelog
 =========
 
-1.2.1 - Unreleased
-------------------
+2.0.0b4 - Unreleased
+--------------------
 
+* Dropped support for Python 3.6.
+  [fschulze]
+
+* Added support for Python 3.10.
+  [fschulze]
+
+
+2.0.0b3 - 2021-07-17
+--------------------
+
+* Fix dhcpserver setup for newer VirtualBox versions.
+  [fschulze]
+
+
+2.0.0b2 - 2019-06-09
+--------------------
+
+* Fix tests for Python 3.x after ploy 2.0.0b3 release.
+  [fschulze]
+
+* Drop support for Python 3.4.
+  [fschulze]
+
+
+2.0.0b1 - 2018-02-07
+--------------------
+
+* Support for ploy 2.0.0.
+  [fschulze]
 
 
 1.2.0 - 2015-09-03

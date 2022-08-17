@@ -1,3 +1,4 @@
+from __future__ import unicode_literals
 from lazy import lazy
 from ploy.common import BaseMaster, yesno
 from ploy.config import BooleanMassager, PathMassager
@@ -52,7 +53,7 @@ class Instance(PlainInstance):
         if group is None:
             return info
         result = {}
-        matcher = re.compile('%s(\D*)(\d+)' % group)
+        matcher = re.compile(r'%s(\D*)(\d+)' % group)
         for key, value in info.items():
             m = matcher.match(key)
             if m:
@@ -241,7 +242,7 @@ class Instance(PlainInstance):
 
     def _get_modifyvm_args(self, config, create):
         args = []
-        for config_key, value in config.items():
+        for config_key, value in sorted(config.items()):
             if not config_key.startswith('vm-'):
                 continue
             key = config_key[3:]
